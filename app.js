@@ -201,25 +201,67 @@ renderEstablecimientos();
 // MIPyV — PASO 3: SECTOR
 // ============================================================
 const sectorGrid = document.getElementById("sectorGrid");
+const sectorSub = document.getElementById("sectorSub");
+const sectorLibreWrap = document.getElementById("sectorLibreWrap");
+const sectorChipsSugeridos = document.getElementById("sectorChipsSugeridos");
+const sectorInput = document.getElementById("sectorInput");
+
 function renderSectores() {
-  sectorGrid.innerHTML = "";
-  const lista = visita.tipo_establecimiento === "Hospital" ? SECTORES_HZT : SECTORES_DEPENDENCIAS;
-  lista.forEach(sec => {
-    const btn = document.createElement("button");
-    btn.className = "tile";
-    btn.style.minHeight = "84px";
-    btn.innerHTML = `<div class="label">${sec}</div>`;
-    if (visita.sector === sec) btn.classList.add("selected");
-    btn.onclick = () => {
-      visita.sector = sec;
-      [...sectorGrid.children].forEach(c => c.classList.remove("selected"));
-      btn.classList.add("selected");
-      nextBtn.disabled = false;
-      setTimeout(goNext, 180);
-    };
-    sectorGrid.appendChild(btn);
-  });
+  const esHZT = visita.tipo_establecimiento === "Hospital";
+  sectorGrid.style.display = esHZT ? "grid" : "none";
+  sectorLibreWrap.style.display = esHZT ? "none" : "block";
+
+  if (esHZT) {
+    sectorSub.textContent = "Elegí dónde interviniste";
+    sectorGrid.innerHTML = "";
+    SECTORES_HZT.forEach(sec => {
+      const btn = document.createElement("button");
+      btn.className = "tile";
+      btn.style.minHeight = "84px";
+      btn.innerHTML = `<div class="label">${sec}</div>`;
+      if (visita.sector === sec) btn.classList.add("selected");
+      btn.onclick = () => {
+        visita.sector = sec;
+        [...sectorGrid.children].forEach(c => c.classList.remove("selected"));
+        btn.classList.add("selected");
+        nextBtn.disabled = false;
+        setTimeout(goNext, 180);
+      };
+      sectorGrid.appendChild(btn);
+    });
+  } else {
+    sectorSub.textContent = "Cada CAP es distinto — tocá un sector frecuente o escribilo/decilo";
+    sectorInput.value = visita.sector || "";
+    sectorChipsSugeridos.innerHTML = "";
+    SECTORES_DEPENDENCIAS.forEach(sec => {
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.textContent = sec;
+      if (visita.sector === sec) chip.classList.add("active");
+      chip.onclick = () => {
+        [...sectorChipsSugeridos.children].forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        sectorInput.value = sec;
+        visita.sector = sec;
+        nextBtn.disabled = false;
+        setTimeout(goNext, 180);
+      };
+      sectorChipsSugeridos.appendChild(chip);
+    });
+  }
 }
+
+sectorInput.addEventListener("input", () => {
+  visita.sector = sectorInput.value.trim();
+  nextBtn.disabled = !canAdvance("m-sector");
+  [...sectorChipsSugeridos.children].forEach(c => c.classList.toggle("active", c.textContent === visita.sector));
+});
+
+setupVoiceButton("sectorVoiceBtn", "sectorVoiceResult", (texto) => {
+  sectorInput.value = texto;
+  visita.sector = texto.trim();
+  nextBtn.disabled = !canAdvance("m-sector");
+});
 
 // ============================================================
 // MIPyV — PASO 4: PLAGA
