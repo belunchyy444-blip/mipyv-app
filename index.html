@@ -243,8 +243,17 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 
     <section class="screen" data-step="m-sector">
       <div class="step-title">¿Qué sector?</div>
-      <div class="step-sub">Elegí dónde interviniste</div>
+      <div class="step-sub" id="sectorSub">Elegí dónde interviniste</div>
       <div class="grid cols-3" id="sectorGrid"></div>
+      <div id="sectorLibreWrap" style="display:none;">
+        <div class="chip-row" id="sectorChipsSugeridos"></div>
+        <input type="text" id="sectorInput" placeholder="Escribí el sector (ej: Consultorio, Depósito...)"
+          style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; margin-top:6px;">
+        <button class="btn btn-secondary" id="sectorVoiceBtn" type="button" style="width:100%; margin-top:12px; flex:none;">
+          🎙️ Decir el sector por voz
+        </button>
+        <div id="sectorVoiceResult" style="margin-top:8px; font-size:.9rem; color:#5A5A5A;"></div>
+      </div>
     </section>
 
     <section class="screen" data-step="m-plaga">
