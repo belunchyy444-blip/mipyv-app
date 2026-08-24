@@ -84,16 +84,31 @@ const PRODUCTOS = [
   { id: "PRD-03", nombre: "Keeptrin", color: "#3E8E5B", icono: "spray" },
   { id: "PRD-04", nombre: "Tacazo", color: "#C0453A", icono: "bottle" },
   { id: "PRD-05", nombre: "Glacoxan H", color: "#E3A426", icono: "powder" },
-  { id: "PRD-06", nombre: "Biorat pellet", color: "#5A5A5A", icono: "pellet" },
-  { id: "PRD-07", nombre: "Ultra Plus", color: "#0D313F", icono: "bottle" },
-  { id: "PRD-08", nombre: "Huagro Rat", color: "#8A5A2E", icono: "pellet" },
+  { id: "PRD-06", nombre: "K-Othrina o similar", color: "#4A7A9E", icono: "spray" },
+  { id: "PRD-07", nombre: "Huagro Chipre o similar", color: "#5A9E7A", icono: "spray" },
+  { id: "PRD-08", nombre: "Aquiles o similar", color: "#8A6F52", icono: "pellet" },
+  { id: "PRD-09", nombre: "Geltex / Gel hormiguicida", color: "#8A5A2E", icono: "pellet" },
+  { id: "PRD-10", nombre: "Chemoxane F / FumiXan Pro", color: "#6E4A8A", icono: "spray" },
+  { id: "PRD-11", nombre: "Ultra Plus / Biorat pellet", color: "#0D313F", icono: "pellet" },
+  { id: "PRD-12", nombre: "Huagro Rat o similar", color: "#5A5A5A", icono: "pellet" },
+  { id: "PRD-13", nombre: "Exclusión física", color: "#2E9E5B", icono: "shield" },
 ];
 
 // Catálogo técnico dosis/frecuencia por combinación plaga+producto (editable solo por HyS)
+// Corregido con los datos reales del POE 2023 (ver Correccion_Catalogos.gs)
 const DOSIS_FRECUENCIA = {
-  "PLA-04|PRD-01": { dosis: "1 bloque por cebadera", frecuencia: "Cada 15 días", puntos: "Bajo mesada, esquinas, zócalos, exteriores" },
-  "PLA-12|PRD-05": { dosis: "Aplicación puntual en trayectorias/nidos", frecuencia: "Reaplicar si persiste actividad", puntos: "Zócalos, marcos de puertas y ventanas" },
-  "PLA-03|PRD-04": { dosis: "Según indicación de etiqueta", frecuencia: "Mensual / según monitoreo", puntos: "Bajo mesadas, cañerías, depósitos" },
+  "PLA-01|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
+  "PLA-02|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
+  "PLA-03|PRD-08": { dosis: "Aplicación puntual en grietas, zócalos, bajo mesadas y sitios estratégicos", frecuencia: "Según necesidad", puntos: "Cocinas, zócalos, desagües, bajo mesadas, motores, grietas" },
+  "PLA-04|PRD-01": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
+  "PLA-05|PRD-02": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
+  "PLA-06|PRD-02": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
+  "PLA-07|PRD-13": { dosis: "Sellado de ingresos, barreras físicas y saneamiento", frecuencia: "Según necesidad", puntos: "Aleros, techos, cornisas, patios de aire" },
+  "PLA-08|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
+  "PLA-09|PRD-10": { dosis: "Aplicación en ambiente cerrado según fabricante y procedimiento", frecuencia: "Según necesidad", puntos: "Camas, colchones, grietas, textiles, áreas de descanso" },
+  "PLA-10|PRD-13": { dosis: "Sellado de ingresos y derivación a autoridad competente", frecuencia: "Según necesidad", puntos: "Entretechos, aleros, cámaras técnicas, cielorrasos" },
+  "PLA-11|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
+  "PLA-12|PRD-05": { dosis: "Aplicación puntual en trayectorias, grietas y puntos de ingreso", frecuencia: "Cada 10 días", puntos: "Cocinas, grietas, zócalos, marcos de puertas y puntos de ingreso" },
 };
 const DOSIS_DEFAULT = { dosis: "Consultar a HyS — combinación sin definir", frecuencia: "Consultar a HyS", puntos: "—" };
 
@@ -138,4 +153,3 @@ const DETALLE_CHIPS_SANEAMIENTO = [
   "Cebaderos revisados",
   "Queda pendiente para otro día",
 ];
-
