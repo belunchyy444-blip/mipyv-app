@@ -8,12 +8,14 @@ let stepList = [];
 let stepIndex = 0;
 
 let visita = {};
-let photoDataUrl = null;
+let fotosDataUrls = []; // hasta 5
 let intervencion = {}; // { protocolo, esNueva, id_establecimiento, establecimiento, tipo_establecimiento, id_plaga, tipo_plaga }
 
 let trabajo = {};
 let avance = {};
-let sPhotoDataUrl = null;
+let sFotosDataUrls = []; // hasta 5
+let operarioAcompanante = null; // nombre del otro operario, o null si trabajó solo/a
+let acompananteRespondido = false;
 
 function resetVisita() {
   visita = {
@@ -29,8 +31,9 @@ function resetVisita() {
     resultado: null,
     observaciones: "",
     protocolo_existente: null,
+    operario_acompanante: null,
   };
-  photoDataUrl = null;
+  fotosDataUrls = [];
 }
 
 function resetIntervencion() {
@@ -39,8 +42,8 @@ function resetIntervencion() {
 
 function resetSaneamiento() {
   trabajo = { id_trabajo: null, id_establecimiento: null, establecimiento: null, fecha_inicio: null, estado: null, esNuevo: true };
-  avance = { tareas: [], detalle: "" };
-  sPhotoDataUrl = null;
+  avance = { tareas: [], detalle: "", notas: "" };
+  sFotosDataUrls = [];
 }
 
 // ============================================================
@@ -72,14 +75,16 @@ function enterModule(mod) {
   resetVisita();
   resetIntervencion();
   resetSaneamiento();
+  operarioAcompanante = null;
+  acompananteRespondido = false;
   if (mod === "saneamiento") {
     document.body.classList.add("mode-saneamiento");
     brandLabel.textContent = "Saneamiento · Área Externa";
-    stepList = ["quien", "s-tipo"];
+    stepList = ["quien", "acompanante", "s-tipo"];
   } else {
     document.body.classList.remove("mode-saneamiento");
     brandLabel.textContent = "MIPyV · HZT Red";
-    stepList = ["quien", "m-tipo"];
+    stepList = ["quien", "acompanante", "m-tipo"];
   }
   progressWrap.style.display = "block";
   bottomBar.style.display = "flex";
@@ -109,11 +114,15 @@ function showStep(name) {
   if (name === "s-cap-continuar") renderTrabajosAbiertos();
   if (name === "m-continuar-lista") renderIntervencionesAbiertas();
   if (name === "m-seguridad") renderSeguridad();
+  if (name === "acompanante") actualizarLabelAcompanante();
+  if (name === "m-foto") renderFotoGrid();
+  if (name === "s-detalle") renderSFotoGrid();
 }
 
 function canAdvance(name) {
   switch (name) {
     case "quien": return !!currentOperario;
+    case "acompanante": return acompananteRespondido;
     case "m-tipo": return false;
     case "m-continuar-lista": return !!intervencion.protocolo;
     case "m-establecimiento": return !!visita.id_establecimiento;
@@ -165,17 +174,37 @@ OPERARIOS.forEach(op => {
 });
 
 // ============================================================
+// PASO COMPARTIDO — ACOMPAÑANTE (trabajó solo o con el otro operario)
+// ============================================================
+const acompanadoLabel = document.getElementById("acompanadoLabel");
+document.getElementById("soloBtn").addEventListener("click", () => {
+  operarioAcompanante = null;
+  acompananteRespondido = true;
+  setTimeout(goNext, 180);
+});
+document.getElementById("acompanadoBtn").addEventListener("click", () => {
+  const otro = OPERARIOS.find(op => op.id !== currentOperario.id);
+  operarioAcompanante = otro ? otro.nombre : null;
+  acompananteRespondido = true;
+  setTimeout(goNext, 180);
+});
+function actualizarLabelAcompanante() {
+  const otro = OPERARIOS.find(op => currentOperario && op.id !== currentOperario.id);
+  acompanadoLabel.textContent = "Trabajé con " + (otro ? otro.nombre : "el otro operario");
+}
+
+// ============================================================
 // MIPyV — m-tipo (nueva / continuar)
 // ============================================================
 document.getElementById("mNuevaBtn").addEventListener("click", () => {
   intervencion.esNueva = true;
-  stepList = ["quien", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepList = ["quien", "acompanante", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
   stepIndex = stepList.indexOf("m-establecimiento");
   showStep("m-establecimiento");
 });
 document.getElementById("mContinuarBtn").addEventListener("click", () => {
   intervencion.esNueva = false;
-  stepList = ["quien", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepList = ["quien", "acompanante", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
   stepIndex = stepList.indexOf("m-continuar-lista");
   showStep("m-continuar-lista");
 });
@@ -439,22 +468,45 @@ document.querySelectorAll('[data-resultado]').forEach(btn => {
 });
 
 // ============================================================
-// MIPyV — m-foto
+// MIPyV — m-foto (hasta 5 fotos)
 // ============================================================
-const photoBox = document.getElementById("photoBox");
+const fotoGrid = document.getElementById("fotoGrid");
 const photoInput = document.getElementById("photoInput");
-function handlePhotoChange(e) {
+function renderFotoGrid() {
+  fotoGrid.innerHTML = "";
+  fotosDataUrls.forEach((url, i) => {
+    const box = document.createElement("div");
+    box.className = "foto-slot filled";
+    box.innerHTML = `<img src="${url}" alt="foto ${i + 1}"><button type="button" class="foto-remove" data-i="${i}">×</button>`;
+    fotoGrid.appendChild(box);
+  });
+  if (fotosDataUrls.length < 5) {
+    const addBox = document.createElement("button");
+    addBox.type = "button";
+    addBox.className = "foto-slot add";
+    addBox.innerHTML = `<span>+</span><small>${fotosDataUrls.length}/5</small>`;
+    addBox.onclick = () => photoInput.click();
+    fotoGrid.appendChild(addBox);
+  }
+  fotoGrid.querySelectorAll(".foto-remove").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      fotosDataUrls.splice(Number(btn.dataset.i), 1);
+      renderFotoGrid();
+    };
+  });
+}
+photoInput.addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (ev) => {
-    photoDataUrl = ev.target.result;
-    photoBox.innerHTML = `<img src="${photoDataUrl}" alt="foto sector">`;
+    fotosDataUrls.push(ev.target.result);
+    renderFotoGrid();
   };
   reader.readAsDataURL(file);
-}
-photoBox.addEventListener("click", () => photoInput.click());
-photoInput.addEventListener("change", handlePhotoChange);
+  photoInput.value = "";
+});
 
 // ============================================================
 // MIPyV — m-obs (chips + notas de texto libre)
@@ -493,6 +545,7 @@ function renderResumenMipyv() {
     ["Producto", visita.producto],
     ["Resultado", visita.resultado],
   ];
+  if (operarioAcompanante) rows.splice(1, 0, ["Trabajó junto con", operarioAcompanante]);
   if (visita.protocolo_existente) rows.splice(1, 0, ["Protocolo", visita.protocolo_existente + " (continuación)"]);
   document.getElementById("summaryList").innerHTML = rows.map(([k, v]) => `
     <div class="summary-card">
@@ -506,13 +559,13 @@ function renderResumenMipyv() {
 // ============================================================
 document.getElementById("sNuevoBtn").addEventListener("click", () => {
   trabajo.esNuevo = true;
-  stepList = ["quien", "s-tipo", "s-cap-nuevo", "s-tareas", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-nuevo", "s-tareas", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
   stepIndex = stepList.indexOf("s-cap-nuevo");
   showStep("s-cap-nuevo");
 });
 document.getElementById("sContinuarBtn").addEventListener("click", () => {
   trabajo.esNuevo = false;
-  stepList = ["quien", "s-tipo", "s-cap-continuar", "s-tareas", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-continuar", "s-tareas", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
   stepIndex = stepList.indexOf("s-cap-continuar");
   showStep("s-cap-continuar");
 });
@@ -627,18 +680,47 @@ DETALLE_CHIPS_SANEAMIENTO.forEach(txt => {
   detalleChips.appendChild(chip);
 });
 
-const sPhotoBox = document.getElementById("sPhotoBox");
 const sPhotoInput = document.getElementById("sPhotoInput");
-sPhotoBox.addEventListener("click", () => sPhotoInput.click());
+const sFotoGrid = document.getElementById("sFotoGrid");
+function renderSFotoGrid() {
+  sFotoGrid.innerHTML = "";
+  sFotosDataUrls.forEach((url, i) => {
+    const box = document.createElement("div");
+    box.className = "foto-slot filled";
+    box.innerHTML = `<img src="${url}" alt="foto ${i + 1}"><button type="button" class="foto-remove" data-i="${i}">×</button>`;
+    sFotoGrid.appendChild(box);
+  });
+  if (sFotosDataUrls.length < 5) {
+    const addBox = document.createElement("button");
+    addBox.type = "button";
+    addBox.className = "foto-slot add";
+    addBox.innerHTML = `<span>+</span><small>${sFotosDataUrls.length}/5</small>`;
+    addBox.onclick = () => sPhotoInput.click();
+    sFotoGrid.appendChild(addBox);
+  }
+  sFotoGrid.querySelectorAll(".foto-remove").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      sFotosDataUrls.splice(Number(btn.dataset.i), 1);
+      renderSFotoGrid();
+    };
+  });
+}
 sPhotoInput.addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (ev) => {
-    sPhotoDataUrl = ev.target.result;
-    sPhotoBox.innerHTML = `<img src="${sPhotoDataUrl}" alt="foto avance">`;
+    sFotosDataUrls.push(ev.target.result);
+    renderSFotoGrid();
   };
   reader.readAsDataURL(file);
+  sPhotoInput.value = "";
+});
+
+const notasSaneamiento = document.getElementById("notasSaneamiento");
+notasSaneamiento.addEventListener("input", () => {
+  avance.notas = notasSaneamiento.value.trim();
 });
 
 // ============================================================
@@ -664,6 +746,7 @@ function renderResumenSaneamiento() {
     ["Tareas de hoy", avance.tareas.join(", ") || "—"],
     ["Cierre", avance.cierre === "terminado" ? "Trabajo terminado" : "Continúa otro día"],
   ];
+  if (operarioAcompanante) rows.splice(1, 0, ["Trabajó junto con", operarioAcompanante]);
   document.getElementById("sSummaryList").innerHTML = rows.map(([k, v]) => `
     <div class="summary-card">
       ${renderIcon("generic", 34)}
@@ -679,7 +762,7 @@ function getQueue() { return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]")
 function setQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); updateQueueBadge(); }
 
 function sendVisita() {
-  const record = { ...visita, foto_base64: photoDataUrl };
+  const record = { ...visita, fotos_base64: fotosDataUrls, operario_acompanante: operarioAcompanante };
   const q = getQueue();
   q.push({ tipo: "visita", data: record });
   setQueue(q);
@@ -716,11 +799,7 @@ function sendVisita() {
 
 document.getElementById("newVisitBtn").addEventListener("click", () => {
   resetVisita();
-  photoBox.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none"><path d="M4 8a2 2 0 012-2h1.5l1-2h7l1 2H18a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V8z" stroke="#5894A7" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" stroke="#5894A7" stroke-width="2"/></svg>
-    <span>Tocá para sacar la foto</span>
-    <input type="file" accept="image/*" capture="environment" id="photoInput" style="display:none">`;
-  document.getElementById("photoInput").addEventListener("change", handlePhotoChange);
+  renderFotoGrid();
   obsSeleccionadas = [];
   notasOperador.value = "";
   [...obsChips.children].forEach(c => c.classList.remove("active"));
@@ -744,8 +823,10 @@ function sendAvance() {
     establecimiento: trabajo.establecimiento,
     tareas: avance.tareas,
     detalle: avance.detalle,
-    foto_base64: sPhotoDataUrl,
+    notas: avance.notas || "",
+    fotos_base64: sFotosDataUrls,
     cierre: avance.cierre,
+    operario_acompanante: operarioAcompanante,
   };
 
   const q = getQueue();
@@ -776,10 +857,8 @@ function sendAvance() {
 
 document.getElementById("sNewBtn").addEventListener("click", () => {
   resetSaneamiento();
-  sPhotoBox.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none"><path d="M4 8a2 2 0 012-2h1.5l1-2h7l1 2H18a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V8z" stroke="#6E8E4E" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" stroke="#6E8E4E" stroke-width="2"/></svg>
-    <span>Tocá para sacar la foto (recomendado)</span>
-    <input type="file" accept="image/*" capture="environment" id="sPhotoInput" style="display:none">`;
+  renderSFotoGrid();
+  notasSaneamiento.value = "";
   detalleSeleccionados = [];
   [...detalleChips.children].forEach(c => c.classList.remove("active"));
   document.querySelectorAll(".tile.multi").forEach(c => c.classList.remove("selected"));
