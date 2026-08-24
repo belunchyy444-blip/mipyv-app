@@ -1,7 +1,7 @@
 // IMPORTANTE: cambiar este número (v2, v3, v4...) CADA VEZ que se actualice
 // algún archivo de la app. Si no se cambia, el navegador nunca detecta que
 // hay una versión nueva y sigue mostrando la copia vieja para siempre.
-const CACHE_NAME = "mipyv-cache-v2";
+const CACHE_NAME = "mipyv-cache-v3";
 const FILES_TO_CACHE = [
   "./index.html",
   "./app.js",
