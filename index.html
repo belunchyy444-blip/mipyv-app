@@ -171,6 +171,15 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 .job-card span{font-size:.82rem; color:#5A5A5A;}
 .job-card.selected{border-color:var(--mod-accent); background:var(--mod-claro);}
 
+/* safety recommendation cards */
+.seg-card{
+  border-radius:var(--radio); padding:16px 18px; margin-bottom:14px; background:var(--mod-claro);
+  border-left:5px solid var(--mod-accent);
+}
+.seg-card h4{margin:0 0 10px; font-size:1rem; color:var(--mod-primary); font-weight:800;}
+.seg-card ul{margin:0; padding-left:20px;}
+.seg-card li{font-size:.92rem; line-height:1.5; margin-bottom:6px; color:var(--texto);}
+
 /* final send screen */
 .center-flow{display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding-top:30px;}
 .center-flow svg{width:80px; height:80px; margin-bottom:10px;}
@@ -212,14 +221,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
       <button class="module-card mipyv" type="button" id="goMipyv">
         <span id="iconBug"></span>
         <div>
-          <div class="mc-title">MIPyV</div>
-          <div class="mc-sub">Control de plagas y vectores</div>
-        </div>
-      </button>
-      <button class="module-card saneamiento" type="button" id="goSaneamiento">
-        <span id="iconBroom"></span>
-        <div>
-          <div class="mc-title">Limpieza y Saneamiento</div>
+                    <div class="mc-title">Limpieza y Saneamiento</div>
           <div class="mc-sub">Predios, cañerías, tanques de agua — CAPs</div>
         </div>
       </button>
@@ -233,6 +235,26 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
     </section>
 
     <!-- ============ MIPyV ============ -->
+
+    <section class="screen" data-step="m-tipo">
+      <div class="step-title">¿Intervención nueva o en curso?</div>
+      <div class="step-sub">Si ya volviste antes por esta misma plaga, continuá el mismo protocolo</div>
+      <button class="tile big" id="mNuevaBtn" style="width:100%; margin-bottom:14px; min-height:110px;" type="button">
+        <span id="iconNuevaMipyv"></span>
+        <div class="label">Intervención nueva</div>
+      </button>
+      <button class="tile big" id="mContinuarBtn" style="width:100%; min-height:110px;" type="button">
+        <span id="iconContinuarMipyv"></span>
+        <div class="label">Continuar una abierta</div>
+      </button>
+    </section>
+
+    <section class="screen" data-step="m-continuar-lista">
+      <div class="step-title">Intervenciones abiertas</div>
+      <div class="step-sub">Elegí la que vas a continuar</div>
+      <div id="intervencionesAbiertasList"></div>
+      <div id="sinIntervencionesMsg" class="step-sub" style="display:none;">No hay intervenciones abiertas guardadas en este celular. Tocá "Sincronizar" con conexión antes de este paso, así se trae lo que haya cargado el otro operario.</div>
+    </section>
 
     <section class="screen" data-step="m-establecimiento">
       <div class="step-title">¿Dónde estás?</div>
@@ -249,10 +271,6 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
         <div class="chip-row" id="sectorChipsSugeridos"></div>
         <input type="text" id="sectorInput" placeholder="Escribí el sector (ej: Consultorio, Depósito...)"
           style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; margin-top:6px;">
-        <button class="btn btn-secondary" id="sectorVoiceBtn" type="button" style="width:100%; margin-top:12px; flex:none;">
-          🎙️ Decir el sector por voz
-        </button>
-        <div id="sectorVoiceResult" style="margin-top:8px; font-size:.9rem; color:#5A5A5A;"></div>
       </div>
     </section>
 
@@ -266,6 +284,12 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
       <div class="step-title">¿Qué producto usaste?</div>
       <div class="step-sub">Tocá el envase que usaste</div>
       <div class="grid" id="productoGrid"></div>
+    </section>
+
+    <section class="screen" data-step="m-seguridad">
+      <div class="step-title">Antes de aplicar</div>
+      <div class="step-sub">Recomendaciones de seguridad de este producto</div>
+      <div id="seguridadCards"></div>
     </section>
 
     <section class="screen" data-step="m-dosis">
@@ -317,13 +341,12 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
     </section>
 
     <section class="screen" data-step="m-obs">
-      <div class="step-title">Observaciones</div>
+            <div class="step-title">Observaciones</div>
       <div class="step-sub">Opcional — tocá si aplica</div>
       <div class="chip-row" id="obsChips"></div>
-      <button class="btn btn-secondary" id="voiceBtn" type="button" style="width:100%; margin-top:8px; flex:none;">
-        🎙️ Grabar observación por voz
-      </button>
-      <div id="voiceResult" style="margin-top:10px; font-size:.9rem; color:#5A5A5A;"></div>
+      <div class="lbl" style="margin-top:14px; margin-bottom:6px;">Notas del operador (opcional)</div>
+      <textarea id="notasOperador" placeholder="Escribí acá cualquier detalle adicional..."
+        style="width:100%; min-height:90px; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; resize:vertical;"></textarea>
     </section>
 
     <section class="screen" data-step="m-confirm">
@@ -384,10 +407,6 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
         <span>Tocá para sacar la foto (recomendado)</span>
         <input type="file" accept="image/*" capture="environment" id="sPhotoInput" style="display:none">
       </label>
-      <button class="btn btn-secondary" id="sVoiceBtn" type="button" style="width:100%; margin-top:12px; flex:none;">
-        🎙️ Grabar detalle por voz
-      </button>
-      <div id="sVoiceResult" style="margin-top:8px; font-size:.9rem; color:#5A5A5A;"></div>
     </section>
 
     <section class="screen" data-step="s-cierre">
