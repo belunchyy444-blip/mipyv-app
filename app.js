@@ -188,38 +188,41 @@ function getIntervencionesAbiertas() { return JSON.parse(localStorage.getItem(IN
 function setIntervencionesAbiertas(list) { localStorage.setItem(INTERVENCIONES_KEY, JSON.stringify(list)); }
 
 function renderIntervencionesAbiertas() {
-  fetchIntervencionesAbiertasRemotas().finally(() => {
-    const list = getIntervencionesAbiertas();
-    const wrap = document.getElementById("intervencionesAbiertasList");
-    const msg = document.getElementById("sinIntervencionesMsg");
-    wrap.innerHTML = "";
-    if (list.length === 0) { msg.style.display = "block"; return; }
-    msg.style.display = "none";
-    list.forEach(iv => {
-      const card = document.createElement("button");
-      card.className = "job-card";
-      card.innerHTML = `<b>${iv.tipo_plaga} — ${iv.establecimiento}</b><span>Sector: ${iv.sector || "—"} · Protocolo ${iv.protocolo}</span>`;
-      card.onclick = () => {
-        intervencion.protocolo = iv.protocolo;
-        intervencion.id_establecimiento = iv.id_establecimiento;
-        intervencion.establecimiento = iv.establecimiento;
-        intervencion.tipo_establecimiento = iv.tipo_establecimiento;
-        intervencion.id_plaga = iv.id_plaga;
-        intervencion.tipo_plaga = iv.tipo_plaga;
-        visita.id_establecimiento = iv.id_establecimiento;
-        visita.establecimiento = iv.establecimiento;
-        visita.tipo_establecimiento = iv.tipo_establecimiento;
-        visita.id_plaga = iv.id_plaga;
-        visita.tipo_plaga = iv.tipo_plaga;
-        visita.protocolo_existente = iv.protocolo;
-        [...wrap.children].forEach(c => c.classList.remove("selected"));
-        card.classList.add("selected");
-        renderSectores();
-        nextBtn.disabled = false;
-        setTimeout(goNext, 180);
-      };
-      wrap.appendChild(card);
-    });
+  pintarIntervencionesAbiertas(); // muestra lo que ya hay en el celular, sin esperar
+  fetchIntervencionesAbiertasRemotas().finally(pintarIntervencionesAbiertas);
+}
+
+function pintarIntervencionesAbiertas() {
+  const list = getIntervencionesAbiertas();
+  const wrap = document.getElementById("intervencionesAbiertasList");
+  const msg = document.getElementById("sinIntervencionesMsg");
+  wrap.innerHTML = "";
+  if (list.length === 0) { msg.style.display = "block"; return; }
+  msg.style.display = "none";
+  list.forEach(iv => {
+    const card = document.createElement("button");
+    card.className = "job-card";
+    card.innerHTML = `<b>${iv.tipo_plaga} — ${iv.establecimiento}</b><span>Sector: ${iv.sector || "—"} · Protocolo ${iv.protocolo}</span>`;
+    card.onclick = () => {
+      intervencion.protocolo = iv.protocolo;
+      intervencion.id_establecimiento = iv.id_establecimiento;
+      intervencion.establecimiento = iv.establecimiento;
+      intervencion.tipo_establecimiento = iv.tipo_establecimiento;
+      intervencion.id_plaga = iv.id_plaga;
+      intervencion.tipo_plaga = iv.tipo_plaga;
+      visita.id_establecimiento = iv.id_establecimiento;
+      visita.establecimiento = iv.establecimiento;
+      visita.tipo_establecimiento = iv.tipo_establecimiento;
+      visita.id_plaga = iv.id_plaga;
+      visita.tipo_plaga = iv.tipo_plaga;
+      visita.protocolo_existente = iv.protocolo;
+      [...wrap.children].forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      renderSectores();
+      nextBtn.disabled = false;
+      setTimeout(goNext, 180);
+    };
+    wrap.appendChild(card);
   });
 }
 
@@ -544,27 +547,30 @@ function getTrabajosAbiertos() { return JSON.parse(localStorage.getItem(TRABAJOS
 function setTrabajosAbiertos(list) { localStorage.setItem(TRABAJOS_KEY, JSON.stringify(list)); }
 
 function renderTrabajosAbiertos() {
-  fetchTrabajosAbiertosRemotos().finally(() => {
-    const list = getTrabajosAbiertos();
-    const wrap = document.getElementById("trabajosAbiertosList");
-    const msg = document.getElementById("sinTrabajosMsg");
-    wrap.innerHTML = "";
-    if (list.length === 0) { msg.style.display = "block"; return; }
-    msg.style.display = "none";
-    list.forEach(t => {
-      const card = document.createElement("button");
-      card.className = "job-card";
-      const fecha = new Date(t.fecha_inicio).toLocaleDateString("es-AR");
-      card.innerHTML = `<b>${t.establecimiento}</b><span>Iniciado ${fecha}</span>`;
-      card.onclick = () => {
-        trabajo = { ...t, esNuevo: false };
-        [...wrap.children].forEach(c => c.classList.remove("selected"));
-        card.classList.add("selected");
-        nextBtn.disabled = false;
-        setTimeout(goNext, 180);
-      };
-      wrap.appendChild(card);
-    });
+  pintarTrabajosAbiertos(); // muestra lo que ya hay en el celular, sin esperar
+  fetchTrabajosAbiertosRemotos().finally(pintarTrabajosAbiertos);
+}
+
+function pintarTrabajosAbiertos() {
+  const list = getTrabajosAbiertos();
+  const wrap = document.getElementById("trabajosAbiertosList");
+  const msg = document.getElementById("sinTrabajosMsg");
+  wrap.innerHTML = "";
+  if (list.length === 0) { msg.style.display = "block"; return; }
+  msg.style.display = "none";
+  list.forEach(t => {
+    const card = document.createElement("button");
+    card.className = "job-card";
+    const fecha = new Date(t.fecha_inicio).toLocaleDateString("es-AR");
+    card.innerHTML = `<b>${t.establecimiento}</b><span>Iniciado ${fecha}</span>`;
+    card.onclick = () => {
+      trabajo = { ...t, esNuevo: false };
+      [...wrap.children].forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      nextBtn.disabled = false;
+      setTimeout(goNext, 180);
+    };
+    wrap.appendChild(card);
   });
 }
 
@@ -837,6 +843,24 @@ window.addEventListener("offline", () => setNetDot(false));
 function setNetDot(online) {
   document.getElementById("netDot").classList.toggle("offline", !online);
 }
+
+// ============================================================
+// AYUDA — botón "?" con explicación simple de la pantalla actual
+// ============================================================
+function showHelp() {
+  const pasoActual = currentModule ? stepList[stepIndex] : "home";
+  const texto = AYUDA_TEXTOS[pasoActual] || "Tocá las imágenes grandes para avanzar. Si tenés dudas, preguntale a Belén.";
+  document.getElementById("helpText").textContent = texto;
+  document.getElementById("helpOverlay").classList.add("show");
+}
+function hideHelp() {
+  document.getElementById("helpOverlay").classList.remove("show");
+}
+document.getElementById("helpBtn").addEventListener("click", showHelp);
+document.getElementById("helpCloseBtn").addEventListener("click", hideHelp);
+document.getElementById("helpOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "helpOverlay") hideHelp();
+});
 
 // ============================================================
 // INIT
