@@ -98,33 +98,134 @@ const PRODUCTOS = [
 // Corregido con los datos reales del POE 2023 (ver Correccion_Catalogos.gs)
 const DOSIS_FRECUENCIA = {
   "PLA-01|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
+  "PLA-01|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
+  "PLA-01|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
   "PLA-02|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
+  "PLA-02|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
+  "PLA-02|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
   "PLA-03|PRD-08": { dosis: "Aplicación puntual en grietas, zócalos, bajo mesadas y sitios estratégicos", frecuencia: "Según necesidad", puntos: "Cocinas, zócalos, desagües, bajo mesadas, motores, grietas" },
   "PLA-04|PRD-01": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
+  "PLA-04|PRD-11": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
+  "PLA-04|PRD-12": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
   "PLA-05|PRD-02": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
+  "PLA-05|PRD-06": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
+  "PLA-05|PRD-07": { dosis: "10 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
   "PLA-06|PRD-02": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
+  "PLA-06|PRD-06": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
+  "PLA-06|PRD-07": { dosis: "10 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
   "PLA-07|PRD-13": { dosis: "Sellado de ingresos, barreras físicas y saneamiento", frecuencia: "Según necesidad", puntos: "Aleros, techos, cornisas, patios de aire" },
   "PLA-08|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
-  "PLA-09|PRD-10": { dosis: "Aplicación en ambiente cerrado según fabricante y procedimiento", frecuencia: "Según necesidad", puntos: "Camas, colchones, grietas, textiles, áreas de descanso" },
+  "PLA-08|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
+  "PLA-08|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
+  "PLA-09|PRD-10": { dosis: "25 ml por litro de agua", frecuencia: "Cada 10 días", puntos: "Camas, colchones, grietas, textiles, áreas de descanso" },
   "PLA-10|PRD-13": { dosis: "Sellado de ingresos y derivación a autoridad competente", frecuencia: "Según necesidad", puntos: "Entretechos, aleros, cámaras técnicas, cielorrasos" },
   "PLA-11|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
+  "PLA-11|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
+  "PLA-11|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
   "PLA-12|PRD-05": { dosis: "Aplicación puntual en trayectorias, grietas y puntos de ingreso", frecuencia: "Cada 10 días", puntos: "Cocinas, grietas, zócalos, marcos de puertas y puntos de ingreso" },
+  "PLA-12|PRD-09": { dosis: "Aplicación puntual en trayectorias, grietas y puntos de ingreso", frecuencia: "Cada 10 días", puntos: "Cocinas, grietas, zócalos, marcos de puertas y puntos de ingreso" },
 };
 const DOSIS_DEFAULT = { dosis: "Consultar a HyS — combinación sin definir", frecuencia: "Consultar a HyS", puntos: "—" };
+
+// Recomendaciones de seguridad por familia de producto — se muestran al operario
+// después de elegir el producto, antes de ver la dosis. Basadas en HDS + historial real.
+const RECOMENDACIONES_SEGURIDAD = {
+  piretroide: {
+    titulo: "Piretroides (voladores/rastreros)",
+    items: [
+      "Ventilar el ambiente 30-60 min antes de que vuelva a entrar alguien",
+      "No aplicar con pacientes, personal o alimentos expuestos en el sector",
+      "Usar guantes, barbijo y anteojos durante toda la aplicación",
+      "No aplicar cerca de desagües hacia el exterior",
+    ],
+  },
+  gel: {
+    titulo: "Cebos en gel (hormigas, cucarachas)",
+    items: [
+      "No aplicar cerca de alimentos ni utensilios de cocina",
+      "Aplicar preferentemente al finalizar las tareas de cocina",
+      "Revisar si hay reinfestación a las 72 horas",
+      "Mantener fuera del alcance de niños y mascotas",
+    ],
+  },
+  rodenticida: {
+    titulo: "Rodenticidas (roedores)",
+    items: [
+      "No tocar los cebos sin guantes",
+      "Señalizar bien los puntos donde se colocó cebo",
+      "No dejar cebo cerca de alimentos ni al alcance de mascotas",
+      "Ante ingestión accidental: CIATOX 0800-333-0160",
+    ],
+  },
+  fumigeno: {
+    titulo: "Fumígeno (chinches de cama)",
+    items: [
+      "Orden de inspección: baño → cocina → comedor → dormitorio",
+      "No sacudir textiles: embolsar en el lugar y cerrar",
+      "Ambiente cerrado, puertas internas abiertas, activar y retirarse de inmediato",
+      "Ventilar 6-8 horas mínimo antes de limpiar o reingresar",
+      "Revisar de nuevo a las 24-72 horas: si persiste, avisar a HyS",
+    ],
+  },
+  fisico: {
+    titulo: "Control físico (sin biocida)",
+    items: [
+      "No se aplican venenos ni biocidas en esta intervención",
+      "Usar guantes, protección respiratoria, calzado de seguridad y mameluco",
+      "Retirar nidos o excretas con precaución, evitando dispersión",
+    ],
+  },
+  general: {
+    titulo: "Cuidados generales",
+    items: [
+      "No comer, beber ni fumar durante la aplicación",
+      "Lavarse las manos bien después de manipular el producto",
+      "Guardar el envase cerrado, en lugar fresco y seco",
+      "Ante síntomas de intoxicación: CIATOX 0800-333-0160",
+    ],
+  },
+};
+
+// Mapea cada producto a su(s) familia(s) de recomendaciones de seguridad
+const FAMILIA_PRODUCTO = {
+  "PRD-01": ["rodenticida", "general"],
+  "PRD-02": ["piretroide", "general"],
+  "PRD-03": ["piretroide", "general"],
+  "PRD-04": ["piretroide", "general"],
+  "PRD-05": ["gel", "general"],
+  "PRD-06": ["piretroide", "general"],
+  "PRD-07": ["piretroide", "general"],
+  "PRD-08": ["gel", "general"],
+  "PRD-09": ["gel", "general"],
+  "PRD-10": ["fumigeno", "general"],
+  "PRD-11": ["rodenticida", "general"],
+  "PRD-12": ["rodenticida", "general"],
+  "PRD-13": ["fisico"],
+};
 
 const EPP = [
   { id: "guantes", nombre: "Guantes", icono: "gloves" },
   { id: "barbijo", nombre: "Barbijo / respirador", icono: "mask" },
   { id: "anteojos", nombre: "Anteojos", icono: "goggles" },
   { id: "botas", nombre: "Botas", icono: "boots" },
+  { id: "mameluco", nombre: "Mameluco", icono: "coverall" },
+  { id: "cofia", nombre: "Cofia", icono: "cap_epp" },
+  { id: "cubrezapatos", nombre: "Cubrezapatos", icono: "shoe_covers" },
 ];
 
 const OBSERVACIONES_CHIPS = [
   "Sin novedad",
   "Mucho tránsito de personal",
-  "Puntos de acceso nuevos",
+  "Personal o pacientes presentes durante la intervención",
+  "Zona de difícil acceso",
+  "Alimentos expuestos",
+  "Agua estancada / humedad",
+  "Residuos sin disposición correcta",
+  "Puntos de acceso nuevos (grietas/aberturas)",
   "Requiere seguimiento",
   "Falta de limpieza en el sector",
+  "Se recomienda sellado de aberturas",
+  "Reinfestación detectada",
 ];
 
 // ============================================================
@@ -145,11 +246,15 @@ const TAREAS_SANEAMIENTO = [
 
 const DETALLE_CHIPS_SANEAMIENTO = [
   "Sin novedad",
-  "Se retiraron residuos/escombros",
+  "Se retiraron residuos / escombros",
   "Agua estancada eliminada",
   "Obstrucción resuelta",
-  "Requiere mantenimiento (reportado)",
   "Tanque limpio y desinfectado",
+  "Poda realizada",
+  "Sellado de aberturas realizado",
+  "Requiere mantenimiento (reportado)",
   "Cebaderos revisados",
+  "Se relevaron nuevos puntos críticos",
+  "Acceso restringido durante la tarea",
   "Queda pendiente para otro día",
 ];
