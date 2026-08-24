@@ -258,3 +258,31 @@ const DETALLE_CHIPS_SANEAMIENTO = [
   "Acceso restringido durante la tarea",
   "Queda pendiente para otro día",
 ];
+
+// ============================================================
+// AYUDA — texto simple por pantalla, para el botón "?"
+// ============================================================
+const AYUDA_TEXTOS = {
+  home: "Tocá el cuadro del módulo que necesitás: MIPyV para plagas, o Limpieza y Saneamiento para las tareas de los CAPs.",
+  quien: "Tocá tu nombre en la lista.",
+  "m-tipo": "¿Es un problema nuevo? Tocá \"Intervención nueva\". ¿Ya viniste antes por esta misma plaga? Tocá \"Continuar una abierta\".",
+  "m-continuar-lista": "Tocá la intervención que corresponde a lo que estás por hacer ahora.",
+  "m-establecimiento": "Tocá el lugar donde estás ahora.",
+  "m-sector": "Tocá el sector donde interviniste. Si es un CAP, tocá el que más se parezca o escribilo.",
+  "m-plaga": "Tocá la imagen de la plaga que viste.",
+  "m-producto": "Tocá la imagen del producto que usaste.",
+  "m-seguridad": "Leé los cuidados de este producto antes de aplicarlo. Después tocá \"Siguiente\".",
+  "m-dosis": "Esta es la dosis correcta, ya viene puesta. No hace falta que hagas nada, solo tocá \"Siguiente\".",
+  "m-epp": "Tocá todos los elementos de protección que usaste (podés tocar varios).",
+  "m-resultado": "Tocá cómo quedó la situación.",
+  "m-foto": "Tocá el recuadro para sacar una foto del sector.",
+  "m-obs": "Si querés, tocá algún cartelito o escribí una nota. No es obligatorio, podés tocar \"Siguiente\" igual.",
+  "m-confirm": "Revisá los datos. Si está todo bien, tocá \"Enviar\".",
+  "s-tipo": "¿Empezás hoy? Tocá \"Iniciar trabajo nuevo\". ¿Ya venías con este trabajo? Tocá \"Continuar un trabajo abierto\".",
+  "s-cap-nuevo": "Tocá el CAP donde estás.",
+  "s-cap-continuar": "Tocá el trabajo que vas a seguir.",
+  "s-tareas": "Tocá todas las tareas que hiciste hoy (podés tocar varias).",
+  "s-detalle": "Tocá lo que corresponda y sacá una foto.",
+  "s-cierre": "¿Vas a seguir otro día en este CAP? Tocá \"Continúa otro día\". ¿Ya terminaste? Tocá \"Terminado\".",
+  "s-confirm": "Revisá los datos. Si está todo bien, tocá \"Enviar\".",
+};
