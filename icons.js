@@ -111,6 +111,18 @@ const ICONS = {
   boots: () => svgWrap(`
     <path d="M26 14V34L18 40Q16 42 18 46H36V34H30V14Z" fill="#fff" stroke="none"/>
   `, "#3E6E8A"),
+  coverall: () => svgWrap(`
+    <path d="M24 14H40V22L44 26V48H36V36H28V48H20V26L24 22Z" fill="#fff" stroke="none"/>
+    <circle cx="32" cy="18" r="3" fill="#3E6E8A" stroke="none"/>
+  `, "#3E6E8A"),
+  cap_epp: () => svgWrap(`
+    <path d="M18 32Q18 18 32 18Q46 18 46 32V36H18Z" fill="#fff" stroke="none"/>
+    <rect x="16" y="36" width="32" height="6" rx="3" fill="#fff" stroke="none"/>
+  `, "#3E6E8A"),
+  shoe_covers: () => svgWrap(`
+    <path d="M20 40Q20 26 26 22Q30 20 34 22Q38 24 38 32V40Z" fill="#fff" stroke="none"/>
+    <ellipse cx="29" cy="42" rx="14" ry="4" fill="#fff" stroke="none"/>
+  `, "#3E6E8A"),
 
   // ---------- ESTABLECIMIENTO ----------
   hospital: () => svgWrap(`
