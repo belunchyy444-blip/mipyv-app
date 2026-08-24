@@ -703,8 +703,12 @@ async function trySync() {
   if (!navigator.onLine) return;
   if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
   let q = getQueue();
-  if (q.length === 0) return;
+  if (q.length === 0) { showSyncFeedback("Ya está todo sincronizado"); return; }
+  const enColaAntes = q.length;
   const pending = [...q];
+  const syncBtn = document.getElementById("syncBtn");
+  const originalLabel = syncBtn.textContent;
+  syncBtn.textContent = "Enviando…";
   for (const item of pending) {
     try {
       await fetch(CONFIG.APPS_SCRIPT_URL, {
@@ -720,6 +724,21 @@ async function trySync() {
       break;
     }
   }
+  syncBtn.textContent = originalLabel;
+  const quedan = getQueue().length;
+  if (quedan === 0) showSyncFeedback(`Listo — se enviaron ${enColaAntes} registro(s)`);
+  else showSyncFeedback(`Se enviaron algunos, quedan ${quedan} pendientes`);
+}
+
+function showSyncFeedback(msg) {
+  const badge = document.getElementById("queueBadge");
+  const prevText = badge.textContent;
+  const prevShow = badge.classList.contains("show");
+  badge.textContent = msg;
+  badge.classList.add("show");
+  setTimeout(() => {
+    updateQueueBadge();
+  }, 2500);
 }
 
 document.getElementById("syncBtn").addEventListener("click", trySync);
