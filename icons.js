@@ -90,6 +90,10 @@ const ICONS = {
     <circle cx="42" cy="44" r="4.5" fill="#fff" stroke="none"/>
     <circle cx="28" cy="24" r="4" fill="#fff" stroke="none"/>
   `, bg),
+  shield: (bg) => svgWrap(`
+    <path d="M32 14L48 20V32Q48 44 32 50Q16 44 16 32V20Z" fill="#fff" stroke="none"/>
+    <path d="M26 32L30 36L38 26" stroke="${bg}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  `, bg),
 
   // ---------- EPP ----------
   gloves: () => svgWrap(`
