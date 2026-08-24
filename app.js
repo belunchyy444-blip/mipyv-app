@@ -213,7 +213,12 @@ function renderIntervencionesAbiertas() {
         visita.tipo_plaga = iv.tipo_plaga;
         visita.protocolo_existente = iv.protocolo;
         [...wrap.children].forEach(c => c.classList.remove("selected"));
-        card.classList.add("selected");      wrap.appendChild(card);
+        card.classList.add("selected");
+        renderSectores();
+        nextBtn.disabled = false;
+        setTimeout(goNext, 180);
+      };
+      wrap.appendChild(card);
     });
   });
 }
@@ -432,7 +437,8 @@ document.querySelectorAll('[data-resultado]').forEach(btn => {
 
 // ============================================================
 // MIPyV — m-foto
-// ============================================================const photoBox = document.getElementById("photoBox");
+// ============================================================
+const photoBox = document.getElementById("photoBox");
 const photoInput = document.getElementById("photoInput");
 function handlePhotoChange(e) {
   const file = e.target.files[0];
@@ -640,7 +646,9 @@ document.querySelectorAll('[data-cierre]').forEach(btn => {
     nextBtn.disabled = false;
     setTimeout(goNext, 200);
   };
-});// ============================================================
+});
+
+// ============================================================
 // SANEAMIENTO — s-confirm
 // ============================================================
 function renderResumenSaneamiento() {
