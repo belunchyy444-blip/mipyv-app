@@ -145,6 +145,18 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 .tile.selected .epp-check{background:var(--verde-ok); border-color:var(--verde-ok);}
 .tile.selected .epp-check::after{content:'✓'; color:#fff; font-size:.85rem; font-weight:900; display:flex; align-items:center; justify-content:center; height:100%;}
 
+/* cantidad de EPP (aparece cuando el ítem está seleccionado) */
+.epp-qty{
+  display:none; align-items:center; justify-content:center; gap:10px; margin-top:6px;
+  background:var(--mod-claro); border-radius:999px; padding:4px 8px;
+}
+.tile.selected .epp-qty{display:flex;}
+.epp-qty button{
+  width:26px; height:26px; border-radius:50%; border:none; background:var(--mod-primary); color:#fff;
+  font-size:1rem; font-weight:900; font-family:inherit; display:flex; align-items:center; justify-content:center; padding:0;
+}
+.epp-qty span{font-weight:800; font-size:.95rem; color:var(--mod-primary); min-width:16px; text-align:center;}
+
 /* dosis autofill card */
 .autofill-card{background:var(--mod-claro); border-radius:var(--radio); padding:18px; text-align:center;}
 .autofill-card .big-num{font-size:1.4rem; font-weight:800; color:var(--mod-primary); margin:6px 0;}
@@ -233,6 +245,14 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
   margin:0 auto 18px;
 }
 .help-text{font-size:1.15rem; line-height:1.5; color:var(--texto); margin-bottom:24px; font-weight:600;}
+
+/* detalle extra condicional (chips que piden explicación) */
+.detalle-extra-box{margin-top:10px;}
+.detalle-extra-box .lbl-extra{font-size:.85rem; font-weight:700; color:var(--mod-primary); margin-bottom:4px;}
+.detalle-extra-box textarea{
+  width:100%; min-height:64px; border:2px solid var(--amarillo-alerta); border-radius:14px; padding:12px;
+  font-family:inherit; font-size:.95rem; resize:vertical; margin-bottom:10px; background:#FFFBF0;
+}
 </style>
 </head>
 <body>
@@ -293,6 +313,22 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
       <button class="tile big" id="acompanadoBtn" style="width:100%; min-height:100px;" type="button">
         <div class="label" id="acompanadoLabel">Trabajé con el otro</div>
       </button>
+    </section>
+
+    <!-- HORARIO (compartido) -->
+    <section class="screen" data-step="horario">
+      <div class="step-title">Horario de trabajo</div>
+      <div class="step-sub">Tocá para elegir la hora</div>
+      <div class="lbl" style="margin-bottom:6px;">Tu hora de inicio</div>
+      <input type="time" id="horaInicio" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem; margin-bottom:16px;">
+      <div class="lbl" style="margin-bottom:6px;">Tu hora de finalización</div>
+      <input type="time" id="horaFin" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem;">
+      <div id="horarioAcompananteWrap" style="display:none; margin-top:20px;">
+        <div class="lbl" style="margin-bottom:6px;" id="horaInicioAcompLabel">Hora de inicio del otro operario</div>
+        <input type="time" id="horaInicioAcomp" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem; margin-bottom:16px;">
+        <div class="lbl" style="margin-bottom:6px;" id="horaFinAcompLabel">Hora de finalización del otro operario</div>
+        <input type="time" id="horaFinAcomp" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem;">
+      </div>
     </section>
 
     <!-- ============ MIPyV ============ -->
@@ -370,7 +406,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 
     <section class="screen" data-step="m-epp">
       <div class="step-title">EPP usado</div>
-      <div class="step-sub">Tocá todo lo que usaste</div>
+      <div class="step-sub">Tocá todo lo que usaste y ajustá la cantidad</div>
       <div class="grid" id="eppGrid"></div>
     </section>
 
@@ -456,10 +492,41 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
       <div class="grid" id="tareasGrid"></div>
     </section>
 
+    <section class="screen" data-step="s-producto">
+      <div class="step-title">¿Qué producto usaste?</div>
+      <div class="step-sub">Tocá el envase que usaste</div>
+      <div class="grid" id="sProductoGrid"></div>
+    </section>
+
+    <section class="screen" data-step="s-seguridad">
+      <div class="step-title">Antes de aplicar</div>
+      <div class="step-sub">Recomendaciones de seguridad de este producto</div>
+      <div id="sSeguridadCards"></div>
+    </section>
+
+    <section class="screen" data-step="s-dosis">
+      <div class="step-title">Dosis y frecuencia</div>
+      <div class="step-sub">Confirmá lo que ya está definido</div>
+      <div class="autofill-card">
+        <div class="lbl">Dosis</div>
+        <div class="big-num" id="sDosisTxt">—</div>
+        <div class="autofill-divider"></div>
+        <div class="lbl">Frecuencia</div>
+        <div class="big-num" id="sFrecTxt">—</div>
+      </div>
+    </section>
+
+    <section class="screen" data-step="s-epp">
+      <div class="step-title">EPP usado</div>
+      <div class="step-sub">Tocá todo lo que usaste y ajustá la cantidad</div>
+      <div class="grid" id="sEppGrid"></div>
+    </section>
+
     <section class="screen" data-step="s-detalle">
       <div class="step-title">Detalle del día</div>
       <div class="step-sub">Tocá lo que aplique y sacá hasta 5 fotos</div>
       <div class="chip-row" id="detalleChips"></div>
+      <div id="detalleExtra"></div>
       <div class="foto-grid" id="sFotoGrid" style="margin-top:6px;"></div>
       <input type="file" accept="image/*" capture="environment" id="sPhotoInput" style="display:none">
       <div class="lbl" style="margin-top:16px; margin-bottom:6px;">Notas del día (opcional)</div>
