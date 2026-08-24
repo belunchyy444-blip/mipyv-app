@@ -4,16 +4,15 @@
 let currentModule = null; // "mipyv" | "saneamiento"
 let currentOperario = null; // { id, nombre }
 
-const MIPYV_STEPS = ["quien","m-establecimiento","m-sector","m-plaga","m-producto","m-dosis","m-epp","m-resultado","m-foto","m-obs","m-confirm","m-sent"];
-
 let stepList = [];
 let stepIndex = 0;
 
 let visita = {};
 let photoDataUrl = null;
+let intervencion = {}; // { protocolo, esNueva, id_establecimiento, establecimiento, tipo_establecimiento, id_plaga, tipo_plaga }
 
-let trabajo = {}; // { id_trabajo, id_establecimiento, establecimiento, fecha_inicio, estado }
-let avance = {};  // { id_avance, tareas:[], detalle, foto }
+let trabajo = {};
+let avance = {};
 let sPhotoDataUrl = null;
 
 function resetVisita() {
@@ -29,8 +28,13 @@ function resetVisita() {
     epp_utilizado: [],
     resultado: null,
     observaciones: "",
+    protocolo_existente: null,
   };
   photoDataUrl = null;
+}
+
+function resetIntervencion() {
+  intervencion = { protocolo: null, esNueva: true, id_establecimiento: null, establecimiento: null, tipo_establecimiento: null, id_plaga: null, tipo_plaga: null };
 }
 
 function resetSaneamiento() {
@@ -66,15 +70,16 @@ homeBtn.addEventListener("click", goHome);
 function enterModule(mod) {
   currentModule = mod;
   resetVisita();
+  resetIntervencion();
   resetSaneamiento();
   if (mod === "saneamiento") {
     document.body.classList.add("mode-saneamiento");
     brandLabel.textContent = "Saneamiento · Área Externa";
-    stepList = ["quien", "s-tipo"]; // el resto se arma dinámicamente según nuevo/continuar
+    stepList = ["quien", "s-tipo"];
   } else {
     document.body.classList.remove("mode-saneamiento");
     brandLabel.textContent = "MIPyV · HZT Red";
-    stepList = [...MIPYV_STEPS];
+    stepList = ["quien", "m-tipo"];
   }
   progressWrap.style.display = "block";
   bottomBar.style.display = "flex";
@@ -102,17 +107,21 @@ function showStep(name) {
   if (name === "m-confirm") renderResumenMipyv();
   if (name === "s-confirm") renderResumenSaneamiento();
   if (name === "s-cap-continuar") renderTrabajosAbiertos();
+  if (name === "m-continuar-lista") renderIntervencionesAbiertas();
+  if (name === "m-seguridad") renderSeguridad();
 }
 
 function canAdvance(name) {
   switch (name) {
     case "quien": return !!currentOperario;
+    case "m-tipo": return false;
+    case "m-continuar-lista": return !!intervencion.protocolo;
     case "m-establecimiento": return !!visita.id_establecimiento;
     case "m-sector": return !!visita.sector;
     case "m-plaga": return !!visita.id_plaga;
     case "m-producto": return !!visita.id_producto;
     case "m-resultado": return !!visita.resultado;
-    case "s-tipo": return false; // avanza por botón propio, no por "Siguiente"
+    case "s-tipo": return false;
     case "s-cap-nuevo": return !!trabajo.id_establecimiento;
     case "s-cap-continuar": return !!trabajo.id_trabajo;
     case "s-tareas": return avance.tareas.length > 0;
@@ -156,7 +165,79 @@ OPERARIOS.forEach(op => {
 });
 
 // ============================================================
-// MIPyV — PASO 2: ESTABLECIMIENTO
+// MIPyV — m-tipo (nueva / continuar)
+// ============================================================
+document.getElementById("mNuevaBtn").addEventListener("click", () => {
+  intervencion.esNueva = true;
+  stepList = ["quien", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepIndex = stepList.indexOf("m-establecimiento");
+  showStep("m-establecimiento");
+});
+document.getElementById("mContinuarBtn").addEventListener("click", () => {
+  intervencion.esNueva = false;
+  stepList = ["quien", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepIndex = stepList.indexOf("m-continuar-lista");
+  showStep("m-continuar-lista");
+});
+
+// ============================================================
+// MIPyV — m-continuar-lista (intervenciones abiertas, cacheadas localmente)
+// ============================================================
+const INTERVENCIONES_KEY = "mipyv_intervenciones_abiertas_v1";
+function getIntervencionesAbiertas() { return JSON.parse(localStorage.getItem(INTERVENCIONES_KEY) || "[]"); }
+function setIntervencionesAbiertas(list) { localStorage.setItem(INTERVENCIONES_KEY, JSON.stringify(list)); }
+
+function renderIntervencionesAbiertas() {
+  fetchIntervencionesAbiertasRemotas().finally(() => {
+    const list = getIntervencionesAbiertas();
+    const wrap = document.getElementById("intervencionesAbiertasList");
+    const msg = document.getElementById("sinIntervencionesMsg");
+    wrap.innerHTML = "";
+    if (list.length === 0) { msg.style.display = "block"; return; }
+    msg.style.display = "none";
+    list.forEach(iv => {
+      const card = document.createElement("button");
+      card.className = "job-card";
+      card.innerHTML = `<b>${iv.tipo_plaga} — ${iv.establecimiento}</b><span>Sector: ${iv.sector || "—"} · Protocolo ${iv.protocolo}</span>`;
+      card.onclick = () => {
+        intervencion.protocolo = iv.protocolo;
+        intervencion.id_establecimiento = iv.id_establecimiento;
+        intervencion.establecimiento = iv.establecimiento;
+        intervencion.tipo_establecimiento = iv.tipo_establecimiento;
+        intervencion.id_plaga = iv.id_plaga;
+        intervencion.tipo_plaga = iv.tipo_plaga;
+        visita.id_establecimiento = iv.id_establecimiento;
+        visita.establecimiento = iv.establecimiento;
+        visita.tipo_establecimiento = iv.tipo_establecimiento;
+        visita.id_plaga = iv.id_plaga;
+        visita.tipo_plaga = iv.tipo_plaga;
+        visita.protocolo_existente = iv.protocolo;
+        [...wrap.children].forEach(c => c.classList.remove("selected"));
+        card.classList.add("selected");      wrap.appendChild(card);
+    });
+  });
+}
+
+async function fetchIntervencionesAbiertasRemotas() {
+  if (!navigator.onLine) return;
+  if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
+  try {
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: "GET" });
+    const data = await res.json();
+    if (!data.intervenciones_abiertas) return;
+    const local = getIntervencionesAbiertas();
+    const merged = [...local];
+    data.intervenciones_abiertas.forEach(remoto => {
+      if (!merged.some(iv => iv.protocolo === remoto.protocolo)) merged.push(remoto);
+    });
+    setIntervencionesAbiertas(merged);
+  } catch (err) {
+    console.warn("No se pudieron traer intervenciones abiertas remotas.", err);
+  }
+}
+
+// ============================================================
+// MIPyV — m-establecimiento
 // ============================================================
 const tipoChips = document.getElementById("tipoChips");
 const establecimientoGrid = document.getElementById("establecimientoGrid");
@@ -186,6 +267,7 @@ function renderEstablecimientos() {
     if (visita.id_establecimiento === est.id) btn.classList.add("selected");
     btn.onclick = () => {
       visita.id_establecimiento = est.id; visita.establecimiento = est.nombre; visita.tipo_establecimiento = est.tipo;
+      intervencion.id_establecimiento = est.id; intervencion.establecimiento = est.nombre; intervencion.tipo_establecimiento = est.tipo;
       [...establecimientoGrid.children].forEach(c => c.classList.remove("selected"));
       btn.classList.add("selected");
       renderSectores();
@@ -198,7 +280,7 @@ function renderEstablecimientos() {
 renderEstablecimientos();
 
 // ============================================================
-// MIPyV — PASO 3: SECTOR
+// MIPyV — m-sector
 // ============================================================
 const sectorGrid = document.getElementById("sectorGrid");
 const sectorSub = document.getElementById("sectorSub");
@@ -230,7 +312,7 @@ function renderSectores() {
       sectorGrid.appendChild(btn);
     });
   } else {
-    sectorSub.textContent = "Cada CAP es distinto — tocá un sector frecuente o escribilo/decilo";
+    sectorSub.textContent = "Cada CAP es distinto — tocá un sector frecuente o escribilo";
     sectorInput.value = visita.sector || "";
     sectorChipsSugeridos.innerHTML = "";
     SECTORES_DEPENDENCIAS.forEach(sec => {
@@ -257,14 +339,8 @@ sectorInput.addEventListener("input", () => {
   [...sectorChipsSugeridos.children].forEach(c => c.classList.toggle("active", c.textContent === visita.sector));
 });
 
-setupVoiceButton("sectorVoiceBtn", "sectorVoiceResult", (texto) => {
-  sectorInput.value = texto;
-  visita.sector = texto.trim();
-  nextBtn.disabled = !canAdvance("m-sector");
-});
-
 // ============================================================
-// MIPyV — PASO 4: PLAGA
+// MIPyV — m-plaga
 // ============================================================
 const plagaGrid = document.getElementById("plagaGrid");
 PLAGAS.forEach(pl => {
@@ -273,6 +349,7 @@ PLAGAS.forEach(pl => {
   btn.innerHTML = `${renderIcon(pl.icono)}<div class="label">${pl.nombre}</div>`;
   btn.onclick = () => {
     visita.id_plaga = pl.id; visita.tipo_plaga = pl.nombre;
+    intervencion.id_plaga = pl.id; intervencion.tipo_plaga = pl.nombre;
     [...plagaGrid.children].forEach(c => c.classList.remove("selected"));
     btn.classList.add("selected");
     nextBtn.disabled = false;
@@ -282,7 +359,7 @@ PLAGAS.forEach(pl => {
 });
 
 // ============================================================
-// MIPyV — PASO 5: PRODUCTO
+// MIPyV — m-producto
 // ============================================================
 const productoGrid = document.getElementById("productoGrid");
 PRODUCTOS.forEach(pr => {
@@ -312,7 +389,20 @@ function applyDosisFrecuencia() {
 }
 
 // ============================================================
-// MIPyV — PASO 7: EPP
+// MIPyV — m-seguridad (recomendaciones según producto)
+// ============================================================
+function renderSeguridad() {
+  const familias = FAMILIA_PRODUCTO[visita.id_producto] || ["general"];
+  const wrap = document.getElementById("seguridadCards");
+  wrap.innerHTML = familias.map(key => {
+    const f = RECOMENDACIONES_SEGURIDAD[key];
+    if (!f) return "";
+    return `<div class="seg-card"><h4>${f.titulo}</h4><ul>${f.items.map(i => `<li>${i}</li>`).join("")}</ul></div>`;
+  }).join("");
+}
+
+// ============================================================
+// MIPyV — m-epp
 // ============================================================
 const eppGrid = document.getElementById("eppGrid");
 EPP.forEach(item => {
@@ -328,7 +418,7 @@ EPP.forEach(item => {
 });
 
 // ============================================================
-// MIPyV — PASO 8: RESULTADO
+// MIPyV — m-resultado
 // ============================================================
 document.querySelectorAll('[data-resultado]').forEach(btn => {
   btn.onclick = () => {
@@ -341,9 +431,8 @@ document.querySelectorAll('[data-resultado]').forEach(btn => {
 });
 
 // ============================================================
-// MIPyV — PASO 9: FOTO
-// ============================================================
-const photoBox = document.getElementById("photoBox");
+// MIPyV — m-foto
+// ============================================================const photoBox = document.getElementById("photoBox");
 const photoInput = document.getElementById("photoInput");
 function handlePhotoChange(e) {
   const file = e.target.files[0];
@@ -359,9 +448,10 @@ photoBox.addEventListener("click", () => photoInput.click());
 photoInput.addEventListener("change", handlePhotoChange);
 
 // ============================================================
-// MIPyV — PASO 10: OBSERVACIONES
+// MIPyV — m-obs (chips + notas de texto libre)
 // ============================================================
 const obsChips = document.getElementById("obsChips");
+const notasOperador = document.getElementById("notasOperador");
 let obsSeleccionadas = [];
 OBSERVACIONES_CHIPS.forEach(txt => {
   const chip = document.createElement("button");
@@ -371,38 +461,19 @@ OBSERVACIONES_CHIPS.forEach(txt => {
     chip.classList.toggle("active");
     if (chip.classList.contains("active")) obsSeleccionadas.push(txt);
     else obsSeleccionadas = obsSeleccionadas.filter(x => x !== txt);
-    visita.observaciones = obsSeleccionadas.join(" · ");
+    actualizarObservaciones();
   };
   obsChips.appendChild(chip);
 });
-
-function setupVoiceButton(btnId, resultId, onText) {
-  const btn = document.getElementById(btnId);
-  const result = document.getElementById(resultId);
-  btn.addEventListener("click", () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { result.textContent = "Dictado por voz no disponible en este dispositivo."; return; }
-    const rec = new SR();
-    rec.lang = "es-AR";
-    rec.onresult = (e) => {
-      const texto = e.results[0][0].transcript;
-      onText(texto);
-      result.textContent = "Grabado: “" + texto + "”";
-    };
-    rec.onerror = () => { result.textContent = "No se pudo grabar. Probá de nuevo."; };
-    const originalLabel = btn.textContent;
-    btn.textContent = "🎙️ Escuchando…";
-    rec.start();
-    rec.onend = () => { btn.textContent = originalLabel; };
-  });
+notasOperador.addEventListener("input", actualizarObservaciones);
+function actualizarObservaciones() {
+  const partes = [...obsSeleccionadas];
+  if (notasOperador.value.trim()) partes.push(notasOperador.value.trim());
+  visita.observaciones = partes.join(" · ");
 }
-setupVoiceButton("voiceBtn", "voiceResult", (texto) => {
-  obsSeleccionadas.push(texto);
-  visita.observaciones = obsSeleccionadas.join(" · ");
-});
 
 // ============================================================
-// MIPyV — PASO 11: RESUMEN
+// MIPyV — m-confirm (resumen)
 // ============================================================
 function renderResumenMipyv() {
   const rows = [
@@ -413,6 +484,7 @@ function renderResumenMipyv() {
     ["Producto", visita.producto],
     ["Resultado", visita.resultado],
   ];
+  if (visita.protocolo_existente) rows.splice(1, 0, ["Protocolo", visita.protocolo_existente + " (continuación)"]);
   document.getElementById("summaryList").innerHTML = rows.map(([k, v]) => `
     <div class="summary-card">
       ${renderIcon("generic", 34)}
@@ -459,7 +531,7 @@ CAPS_SANEAMIENTO.forEach(cap => {
 });
 
 // ============================================================
-// SANEAMIENTO — s-cap-continuar (trabajos abiertos, cacheados localmente)
+// SANEAMIENTO — s-cap-continuar
 // ============================================================
 const TRABAJOS_KEY = "mipyv_trabajos_abiertos_v1";
 function getTrabajosAbiertos() { return JSON.parse(localStorage.getItem(TRABAJOS_KEY) || "[]"); }
@@ -490,8 +562,6 @@ function renderTrabajosAbiertos() {
   });
 }
 
-// Trae los trabajos abiertos que están en la planilla (por si el otro operario
-// inició uno desde su propio celular) y los mezcla con la cache local.
 async function fetchTrabajosAbiertosRemotos() {
   if (!navigator.onLine) return;
   if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
@@ -528,7 +598,7 @@ TAREAS_SANEAMIENTO.forEach(t => {
 });
 
 // ============================================================
-// SANEAMIENTO — s-detalle (chips + foto + voz)
+// SANEAMIENTO — s-detalle (chips + foto)
 // ============================================================
 const detalleChips = document.getElementById("detalleChips");
 let detalleSeleccionados = [];
@@ -559,25 +629,18 @@ sPhotoInput.addEventListener("change", (e) => {
   reader.readAsDataURL(file);
 });
 
-setupVoiceButton("sVoiceBtn", "sVoiceResult", (texto) => {
-  detalleSeleccionados.push(texto);
-  avance.detalle = detalleSeleccionados.join(" · ");
-});
-
 // ============================================================
 // SANEAMIENTO — s-cierre
 // ============================================================
 document.querySelectorAll('[data-cierre]').forEach(btn => {
   btn.onclick = () => {
-    avance.cierre = btn.dataset.cierre; // "continua" | "terminado"
+    avance.cierre = btn.dataset.cierre;
     document.querySelectorAll('[data-cierre]').forEach(b => b.style.outline = "none");
     btn.style.outline = "4px solid #2E5233";
     nextBtn.disabled = false;
     setTimeout(goNext, 200);
   };
-});
-
-// ============================================================
+});// ============================================================
 // SANEAMIENTO — s-confirm
 // ============================================================
 function renderResumenSaneamiento() {
@@ -606,6 +669,29 @@ function sendVisita() {
   const q = getQueue();
   q.push({ tipo: "visita", data: record });
   setQueue(q);
+
+  // actualizar cache local de intervenciones abiertas
+  let abiertas = getIntervencionesAbiertas();
+  if (visita.resultado === "Resuelto" || visita.resultado === "No se pudo acceder al sector") {
+    if (visita.protocolo_existente) {
+      abiertas = abiertas.filter(iv => iv.protocolo !== visita.protocolo_existente);
+    }
+  } else if (visita.resultado === "Requiere otra visita") {
+    const protocoloClave = visita.protocolo_existente || "PENDIENTE-" + visita.id_visita;
+    const existente = abiertas.findIndex(iv => iv.protocolo === protocoloClave);
+    const registro = {
+      protocolo: protocoloClave,
+      id_establecimiento: visita.id_establecimiento,
+      establecimiento: visita.establecimiento,
+      tipo_establecimiento: visita.tipo_establecimiento,
+      id_plaga: visita.id_plaga,
+      tipo_plaga: visita.tipo_plaga,
+      sector: visita.sector,
+    };
+    if (existente >= 0) abiertas[existente] = registro; else abiertas.push(registro);
+  }
+  setIntervencionesAbiertas(abiertas);
+
   document.getElementById("sentSub").textContent = navigator.onLine
     ? "Visita registrada — sincronizando…"
     : "Visita guardada en el celular — se enviará cuando haya señal";
@@ -622,6 +708,7 @@ document.getElementById("newVisitBtn").addEventListener("click", () => {
     <input type="file" accept="image/*" capture="environment" id="photoInput" style="display:none">`;
   document.getElementById("photoInput").addEventListener("change", handlePhotoChange);
   obsSeleccionadas = [];
+  notasOperador.value = "";
   [...obsChips.children].forEach(c => c.classList.remove("active"));
   [...establecimientoGrid.children].forEach(c => c.classList.remove("selected"));
   document.querySelectorAll(".epp-tile").forEach(c => c.classList.remove("selected"));
@@ -648,13 +735,11 @@ function sendAvance() {
   };
 
   const q = getQueue();
-  // si es trabajo nuevo, primero se registra el trabajo en sí
   if (trabajo.esNuevo) {
     q.push({ tipo: "trabajo_nuevo", data: { ...trabajo, operario_inicio: currentOperario.nombre } });
   }
   q.push({ tipo: "avance", data: record });
 
-  // actualizar/crear cache local de trabajos abiertos
   let abiertos = getTrabajosAbiertos();
   if (avance.cierre === "terminado") {
     abiertos = abiertos.filter(t => t.id_trabajo !== trabajo.id_trabajo);
@@ -732,13 +817,9 @@ async function trySync() {
 
 function showSyncFeedback(msg) {
   const badge = document.getElementById("queueBadge");
-  const prevText = badge.textContent;
-  const prevShow = badge.classList.contains("show");
   badge.textContent = msg;
   badge.classList.add("show");
-  setTimeout(() => {
-    updateQueueBadge();
-  }, 2500);
+  setTimeout(() => { updateQueueBadge(); }, 2500);
 }
 
 document.getElementById("syncBtn").addEventListener("click", trySync);
@@ -756,6 +837,8 @@ document.getElementById("iconBug").innerHTML = renderIcon("bug");
 document.getElementById("iconBroom").innerHTML = renderIcon("broom");
 document.getElementById("iconNuevo").innerHTML = renderIcon("calendar_new");
 document.getElementById("iconContinuar").innerHTML = renderIcon("calendar_continue");
+document.getElementById("iconNuevaMipyv").innerHTML = renderIcon("calendar_new");
+document.getElementById("iconContinuarMipyv").innerHTML = renderIcon("calendar_continue");
 
 setNetDot(navigator.onLine);
 updateQueueBadge();
