@@ -259,12 +259,21 @@ const DETALLE_CHIPS_SANEAMIENTO = [
   "Queda pendiente para otro día",
 ];
 
+// Chips que, al activarse, piden un detalle extra en un cuadro de texto aparte
+const CHIPS_CON_DETALLE = {
+  "Se relevaron nuevos puntos críticos": "¿Cuáles y por qué son un punto crítico?",
+  "Requiere mantenimiento (reportado)": "¿Qué requiere mantenimiento y por qué?",
+  "Queda pendiente para otro día": "¿Qué queda pendiente por hacer?",
+};
+
 // ============================================================
 // AYUDA — texto simple por pantalla, para el botón "?"
 // ============================================================
 const AYUDA_TEXTOS = {
   home: "Tocá el cuadro del módulo que necesitás: MIPyV para plagas, o Limpieza y Saneamiento para las tareas de los CAPs.",
   quien: "Tocá tu nombre en la lista.",
+  acompanante: "Si hoy trabajaste solo/a, tocá esa opción. Si estuviste con el otro operario, tocá la otra — así queda registrado que fueron los dos.",
+  horario: "Tocá para elegir la hora en que empezaste y la hora en que terminaste. Si trabajaste con el otro operario, también sus horarios.",
   "m-tipo": "¿Es un problema nuevo? Tocá \"Intervención nueva\". ¿Ya viniste antes por esta misma plaga? Tocá \"Continuar una abierta\".",
   "m-continuar-lista": "Tocá la intervención que corresponde a lo que estás por hacer ahora.",
   "m-establecimiento": "Tocá el lugar donde estás ahora.",
@@ -273,7 +282,7 @@ const AYUDA_TEXTOS = {
   "m-producto": "Tocá la imagen del producto que usaste.",
   "m-seguridad": "Leé los cuidados de este producto antes de aplicarlo. Después tocá \"Siguiente\".",
   "m-dosis": "Esta es la dosis correcta, ya viene puesta. No hace falta que hagas nada, solo tocá \"Siguiente\".",
-  "m-epp": "Tocá todos los elementos de protección que usaste (podés tocar varios).",
+  "m-epp": "Tocá todos los elementos de protección que usaste (podés tocar varios). Después ajustá la cantidad con los botones + y -.",
   "m-resultado": "Tocá cómo quedó la situación.",
   "m-foto": "Tocá el recuadro para sacar una foto del sector.",
   "m-obs": "Si querés, tocá algún cartelito o escribí una nota. No es obligatorio, podés tocar \"Siguiente\" igual.",
@@ -282,7 +291,11 @@ const AYUDA_TEXTOS = {
   "s-cap-nuevo": "Tocá el CAP donde estás.",
   "s-cap-continuar": "Tocá el trabajo que vas a seguir.",
   "s-tareas": "Tocá todas las tareas que hiciste hoy (podés tocar varias).",
-  "s-detalle": "Tocá lo que corresponda y sacá una foto.",
+  "s-producto": "Tocá la imagen del producto que usaste.",
+  "s-seguridad": "Leé los cuidados de este producto antes de aplicarlo. Después tocá \"Siguiente\".",
+  "s-dosis": "Esta es la dosis correcta, ya viene puesta. No hace falta que hagas nada, solo tocá \"Siguiente\".",
+  "s-epp": "Tocá todos los elementos de protección que usaste. Después ajustá la cantidad con los botones + y -.",
+  "s-detalle": "Tocá lo que corresponda y sacá una foto. Si tocás algún cartelito con un ícono de pregunta, contestá abajo qué pasó.",
   "s-cierre": "¿Vas a seguir otro día en este CAP? Tocá \"Continúa otro día\". ¿Ya terminaste? Tocá \"Terminado\".",
   "s-confirm": "Revisá los datos. Si está todo bien, tocá \"Enviar\".",
 };
