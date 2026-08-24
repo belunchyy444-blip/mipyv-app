@@ -16,6 +16,7 @@ let avance = {};
 let sFotosDataUrls = []; // hasta 5
 let operarioAcompanante = null; // nombre del otro operario, o null si trabajó solo/a
 let acompananteRespondido = false;
+let detalleExtraTextos = {}; // texto extra por cada chip de DETALLE_CHIPS_SANEAMIENTO que lo requiera
 
 function resetVisita() {
   visita = {
@@ -27,11 +28,13 @@ function resetVisita() {
     id_plaga: null, tipo_plaga: null,
     id_producto: null, producto: null,
     dosis_aplicada: null, frecuencia_recomendada: null, puntos_criticos: null,
-    epp_utilizado: [],
+    epp_utilizado: [], // [{nombre, cantidad}]
     resultado: null,
     observaciones: "",
     protocolo_existente: null,
     operario_acompanante: null,
+    hora_inicio: null, hora_fin: null,
+    hora_inicio_acompanante: null, hora_fin_acompanante: null,
   };
   fotosDataUrls = [];
 }
@@ -42,8 +45,14 @@ function resetIntervencion() {
 
 function resetSaneamiento() {
   trabajo = { id_trabajo: null, id_establecimiento: null, establecimiento: null, fecha_inicio: null, estado: null, esNuevo: true };
-  avance = { tareas: [], detalle: "", notas: "" };
+  avance = {
+    tareas: [], detalle: "", notas: "",
+    epp_utilizado: [], // [{nombre, cantidad}]
+    producto_biocida: null, id_producto_biocida: null,
+    dosis_biocida: null, frecuencia_biocida: null, puntos_criticos_biocida: null,
+  };
   sFotosDataUrls = [];
+  detalleExtraTextos = {};
 }
 
 // ============================================================
@@ -115,28 +124,49 @@ function showStep(name) {
   if (name === "m-continuar-lista") renderIntervencionesAbiertas();
   if (name === "m-seguridad") renderSeguridad();
   if (name === "acompanante") actualizarLabelAcompanante();
+  if (name === "horario") actualizarPantallaHorario();
   if (name === "m-foto") renderFotoGrid();
   if (name === "s-detalle") renderSFotoGrid();
+  if (name === "m-epp") renderEppGrid();
+  if (name === "s-epp") renderSEppGrid();
+  if (name === "s-seguridad") renderSSeguridad();
 }
 
 function canAdvance(name) {
   switch (name) {
     case "quien": return !!currentOperario;
     case "acompanante": return acompananteRespondido;
+    case "horario": return validarHorario();
     case "m-tipo": return false;
     case "m-continuar-lista": return !!intervencion.protocolo;
     case "m-establecimiento": return !!visita.id_establecimiento;
     case "m-sector": return !!visita.sector;
     case "m-plaga": return !!visita.id_plaga;
     case "m-producto": return !!visita.id_producto;
+    case "m-epp": return visita.epp_utilizado.length > 0;
     case "m-resultado": return !!visita.resultado;
     case "s-tipo": return false;
     case "s-cap-nuevo": return !!trabajo.id_establecimiento;
     case "s-cap-continuar": return !!trabajo.id_trabajo;
+    case "s-producto": return !!avance.id_producto_biocida;
     case "s-tareas": return avance.tareas.length > 0;
+    case "s-epp": return avance.epp_utilizado.length > 0;
+    case "s-detalle": return validarDetalleSaneamiento();
     case "s-cierre": return !!avance.cierre;
     default: return true;
   }
+}
+
+function validarHorario() {
+  if (!horaInicioEl.value || !horaFinEl.value) return false;
+  if (operarioAcompanante && (!horaInicioAcompEl.value || !horaFinAcompEl.value)) return false;
+  return true;
+}
+
+function validarDetalleSaneamiento() {
+  return detalleSeleccionados
+    .filter(txt => CHIPS_CON_DETALLE[txt])
+    .every(txt => (detalleExtraTextos[txt] || "").trim().length > 0);
 }
 
 function goNext() {
@@ -194,17 +224,50 @@ function actualizarLabelAcompanante() {
 }
 
 // ============================================================
+// PASO COMPARTIDO — HORARIO (hora de inicio/fin, propia y del acompañante)
+// ============================================================
+const horaInicioEl = document.getElementById("horaInicio");
+const horaFinEl = document.getElementById("horaFin");
+const horarioAcompananteWrap = document.getElementById("horarioAcompananteWrap");
+const horaInicioAcompLabel = document.getElementById("horaInicioAcompLabel");
+const horaFinAcompLabel = document.getElementById("horaFinAcompLabel");
+const horaInicioAcompEl = document.getElementById("horaInicioAcomp");
+const horaFinAcompEl = document.getElementById("horaFinAcomp");
+
+function actualizarPantallaHorario() {
+  const hayAcompanante = !!operarioAcompanante;
+  horarioAcompananteWrap.style.display = hayAcompanante ? "block" : "none";
+  if (hayAcompanante) {
+    horaInicioAcompLabel.textContent = `Hora de inicio de ${operarioAcompanante}`;
+    horaFinAcompLabel.textContent = `Hora de finalización de ${operarioAcompanante}`;
+  }
+}
+
+function guardarHorarios(objetivo) {
+  objetivo.hora_inicio = horaInicioEl.value || null;
+  objetivo.hora_fin = horaFinEl.value || null;
+  objetivo.hora_inicio_acompanante = operarioAcompanante ? (horaInicioAcompEl.value || null) : null;
+  objetivo.hora_fin_acompanante = operarioAcompanante ? (horaFinAcompEl.value || null) : null;
+}
+
+[horaInicioEl, horaFinEl, horaInicioAcompEl, horaFinAcompEl].forEach(el => {
+  el.addEventListener("input", () => {
+    if (stepList[stepIndex] === "horario") nextBtn.disabled = !canAdvance("horario");
+  });
+});
+
+// ============================================================
 // MIPyV — m-tipo (nueva / continuar)
 // ============================================================
 document.getElementById("mNuevaBtn").addEventListener("click", () => {
   intervencion.esNueva = true;
-  stepList = ["quien", "acompanante", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepList = ["quien", "acompanante", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "horario", "m-confirm", "m-sent"];
   stepIndex = stepList.indexOf("m-establecimiento");
   showStep("m-establecimiento");
 });
 document.getElementById("mContinuarBtn").addEventListener("click", () => {
   intervencion.esNueva = false;
-  stepList = ["quien", "acompanante", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepList = ["quien", "acompanante", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "horario", "m-confirm", "m-sent"];
   stepIndex = stepList.indexOf("m-continuar-lista");
   showStep("m-continuar-lista");
 });
@@ -439,20 +502,70 @@ function renderSeguridad() {
 }
 
 // ============================================================
-// MIPyV — m-epp
+// MIPyV — m-epp / SANEAMIENTO — s-epp (con cantidad, ambos comparten lógica)
 // ============================================================
 const eppGrid = document.getElementById("eppGrid");
-EPP.forEach(item => {
-  const btn = document.createElement("button");
-  btn.className = "tile epp-tile";
-  btn.innerHTML = `<div class="epp-check"></div>${renderIcon(item.icono)}<div class="label">${item.nombre}</div>`;
-  btn.onclick = () => {
-    btn.classList.toggle("selected");
-    if (btn.classList.contains("selected")) visita.epp_utilizado.push(item.nombre);
-    else visita.epp_utilizado = visita.epp_utilizado.filter(x => x !== item.nombre);
-  };
-  eppGrid.appendChild(btn);
-});
+const sEppGrid = document.getElementById("sEppGrid");
+
+// arma una grilla de EPP con stepper de cantidad; "getLista"/"setLista" leen y
+// escriben el arreglo [{nombre, cantidad}] correspondiente (visita o avance)
+function construirEppGrid(container, getLista, setLista) {
+  container.innerHTML = "";
+  const listaActual = getLista();
+  EPP.forEach(item => {
+    const existente = listaActual.find(x => x.nombre === item.nombre);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tile epp-tile" + (existente ? " selected" : "");
+    btn.innerHTML = `
+      <div class="epp-check"></div>
+      ${renderIcon(item.icono)}
+      <div class="label">${item.nombre}</div>
+      <div class="epp-qty">
+        <button type="button" class="epp-menos">−</button>
+        <span class="epp-cant">${existente ? existente.cantidad : 1}</span>
+        <button type="button" class="epp-mas">+</button>
+      </div>`;
+    btn.addEventListener("click", (e) => {
+      if (e.target.closest(".epp-qty")) return; // no togglear si tocó +/-
+      btn.classList.toggle("selected");
+      let lista = getLista();
+      if (btn.classList.contains("selected")) {
+        if (!lista.some(x => x.nombre === item.nombre)) lista = [...lista, { nombre: item.nombre, cantidad: 1 }];
+      } else {
+        lista = lista.filter(x => x.nombre !== item.nombre);
+      }
+      setLista(lista);
+      nextBtn.disabled = !canAdvance(stepList[stepIndex]);
+    });
+    btn.querySelector(".epp-mas").addEventListener("click", (e) => {
+      e.stopPropagation();
+      cambiarCantidadEpp(item.nombre, 1, getLista, setLista, btn);
+    });
+    btn.querySelector(".epp-menos").addEventListener("click", (e) => {
+      e.stopPropagation();
+      cambiarCantidadEpp(item.nombre, -1, getLista, setLista, btn);
+    });
+    container.appendChild(btn);
+  });
+}
+
+function cambiarCantidadEpp(nombre, delta, getLista, setLista, btn) {
+  let lista = getLista();
+  const idx = lista.findIndex(x => x.nombre === nombre);
+  if (idx === -1) return;
+  const nuevaCantidad = Math.max(1, lista[idx].cantidad + delta);
+  lista = lista.map((x, i) => (i === idx ? { ...x, cantidad: nuevaCantidad } : x));
+  setLista(lista);
+  btn.querySelector(".epp-cant").textContent = nuevaCantidad;
+}
+
+function renderEppGrid() {
+  construirEppGrid(eppGrid, () => visita.epp_utilizado, (lista) => { visita.epp_utilizado = lista; });
+}
+function renderSEppGrid() {
+  construirEppGrid(sEppGrid, () => avance.epp_utilizado, (lista) => { avance.epp_utilizado = lista; });
+}
 
 // ============================================================
 // MIPyV — m-resultado
@@ -537,6 +650,7 @@ function actualizarObservaciones() {
 // MIPyV — m-confirm (resumen)
 // ============================================================
 function renderResumenMipyv() {
+  guardarHorarios(visita);
   const rows = [
     ["Operario", visita.operario],
     ["Establecimiento", visita.establecimiento],
@@ -544,6 +658,7 @@ function renderResumenMipyv() {
     ["Plaga", visita.tipo_plaga],
     ["Producto", visita.producto],
     ["Resultado", visita.resultado],
+    ["Horario", (visita.hora_inicio || "—") + " a " + (visita.hora_fin || "—")],
   ];
   if (operarioAcompanante) rows.splice(1, 0, ["Trabajó junto con", operarioAcompanante]);
   if (visita.protocolo_existente) rows.splice(1, 0, ["Protocolo", visita.protocolo_existente + " (continuación)"]);
@@ -559,13 +674,13 @@ function renderResumenMipyv() {
 // ============================================================
 document.getElementById("sNuevoBtn").addEventListener("click", () => {
   trabajo.esNuevo = true;
-  stepList = ["quien", "acompanante", "s-tipo", "s-cap-nuevo", "s-tareas", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-nuevo", "s-tareas", "s-epp", "s-detalle", "horario", "s-cierre", "s-confirm", "s-sent"];
   stepIndex = stepList.indexOf("s-cap-nuevo");
   showStep("s-cap-nuevo");
 });
 document.getElementById("sContinuarBtn").addEventListener("click", () => {
   trabajo.esNuevo = false;
-  stepList = ["quien", "acompanante", "s-tipo", "s-cap-continuar", "s-tareas", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-continuar", "s-tareas", "s-epp", "s-detalle", "horario", "s-cierre", "s-confirm", "s-sent"];
   stepIndex = stepList.indexOf("s-cap-continuar");
   showStep("s-cap-continuar");
 });
@@ -646,9 +761,50 @@ async function fetchTrabajosAbiertosRemotos() {
 }
 
 // ============================================================
+// SANEAMIENTO — s-producto / s-seguridad / s-dosis (biocida, opcional)
+// ============================================================
+const sProductoGrid = document.getElementById("sProductoGrid");
+PRODUCTOS.forEach(pr => {
+  const btn = document.createElement("button");
+  btn.className = "tile";
+  btn.innerHTML = `${renderIcon(pr.icono, null, pr.color)}<div class="label">${pr.nombre}</div>`;
+  btn.onclick = () => {
+    avance.id_producto_biocida = pr.id; avance.producto_biocida = pr.nombre;
+    [...sProductoGrid.children].forEach(c => c.classList.remove("selected"));
+    btn.classList.add("selected");
+    applyDosisFrecuenciaSaneamiento();
+    nextBtn.disabled = false;
+    setTimeout(goNext, 180);
+  };
+  sProductoGrid.appendChild(btn);
+});
+
+function applyDosisFrecuenciaSaneamiento() {
+  // usa la misma tabla de dosis, buscando cualquier plaga que use este producto
+  const combo = Object.keys(DOSIS_FRECUENCIA).find(k => k.endsWith("|" + avance.id_producto_biocida));
+  const d = combo ? DOSIS_FRECUENCIA[combo] : DOSIS_DEFAULT;
+  avance.dosis_biocida = d.dosis;
+  avance.frecuencia_biocida = d.frecuencia;
+  avance.puntos_criticos_biocida = d.puntos;
+  document.getElementById("sDosisTxt").textContent = d.dosis;
+  document.getElementById("sFrecTxt").textContent = d.frecuencia;
+}
+
+function renderSSeguridad() {
+  const familias = FAMILIA_PRODUCTO[avance.id_producto_biocida] || ["general"];
+  const wrap = document.getElementById("sSeguridadCards");
+  wrap.innerHTML = familias.map(key => {
+    const f = RECOMENDACIONES_SEGURIDAD[key];
+    if (!f) return "";
+    return `<div class="seg-card"><h4>${f.titulo}</h4><ul>${f.items.map(i => `<li>${i}</li>`).join("")}</ul></div>`;
+  }).join("");
+}
+
+// ============================================================
 // SANEAMIENTO — s-tareas
 // ============================================================
 const tareasGrid = document.getElementById("tareasGrid");
+const NOMBRE_TAREA_INSECTICIDA = "Saneamiento con insecticida doméstico";
 TAREAS_SANEAMIENTO.forEach(t => {
   const btn = document.createElement("button");
   btn.className = "tile multi";
@@ -657,28 +813,74 @@ TAREAS_SANEAMIENTO.forEach(t => {
     btn.classList.toggle("selected");
     if (btn.classList.contains("selected")) avance.tareas.push(t.nombre);
     else avance.tareas = avance.tareas.filter(x => x !== t.nombre);
+    actualizarPasosBiocidaSaneamiento();
     nextBtn.disabled = !canAdvance("s-tareas");
   };
   tareasGrid.appendChild(btn);
 });
 
+// Inserta o saca los pasos de producto/seguridad/dosis del biocida, según
+// si se marcó la tarea de insecticida. Se llama cada vez que cambian las tareas.
+function actualizarPasosBiocidaSaneamiento() {
+  const pasosBiocida = ["s-producto", "s-seguridad", "s-dosis"];
+  const yaEstan = pasosBiocida.every(p => stepList.includes(p));
+  const necesitaBiocida = avance.tareas.includes(NOMBRE_TAREA_INSECTICIDA);
+  const idxEpp = stepList.indexOf("s-epp");
+  if (necesitaBiocida && !yaEstan) {
+    stepList.splice(idxEpp, 0, ...pasosBiocida);
+  } else if (!necesitaBiocida && yaEstan) {
+    stepList = stepList.filter(p => !pasosBiocida.includes(p));
+  }
+}
+
 // ============================================================
 // SANEAMIENTO — s-detalle (chips + foto)
 // ============================================================
 const detalleChips = document.getElementById("detalleChips");
+const detalleExtra = document.getElementById("detalleExtra");
 let detalleSeleccionados = [];
 DETALLE_CHIPS_SANEAMIENTO.forEach(txt => {
   const chip = document.createElement("button");
   chip.className = "chip";
-  chip.textContent = txt;
+  chip.textContent = CHIPS_CON_DETALLE[txt] ? txt + " ❓" : txt;
   chip.onclick = () => {
     chip.classList.toggle("active");
     if (chip.classList.contains("active")) detalleSeleccionados.push(txt);
-    else detalleSeleccionados = detalleSeleccionados.filter(x => x !== txt);
-    avance.detalle = detalleSeleccionados.join(" · ");
+    else {
+      detalleSeleccionados = detalleSeleccionados.filter(x => x !== txt);
+      delete detalleExtraTextos[txt];
+    }
+    actualizarDetalleTexto();
+    renderDetalleExtra();
+    nextBtn.disabled = !canAdvance("s-detalle");
   };
   detalleChips.appendChild(chip);
 });
+
+function renderDetalleExtra() {
+  detalleExtra.innerHTML = "";
+  detalleSeleccionados.filter(txt => CHIPS_CON_DETALLE[txt]).forEach(txt => {
+    const box = document.createElement("div");
+    box.className = "detalle-extra-box";
+    box.innerHTML = `
+      <div class="lbl-extra">${CHIPS_CON_DETALLE[txt]}</div>
+      <textarea placeholder="Escribí acá...">${detalleExtraTextos[txt] || ""}</textarea>`;
+    box.querySelector("textarea").addEventListener("input", (e) => {
+      detalleExtraTextos[txt] = e.target.value;
+      actualizarDetalleTexto();
+      nextBtn.disabled = !canAdvance("s-detalle");
+    });
+    detalleExtra.appendChild(box);
+  });
+}
+
+function actualizarDetalleTexto() {
+  const partes = detalleSeleccionados.map(txt => {
+    const extra = detalleExtraTextos[txt];
+    return extra ? `${txt}: ${extra}` : txt;
+  });
+  avance.detalle = partes.join(" · ");
+}
 
 const sPhotoInput = document.getElementById("sPhotoInput");
 const sFotoGrid = document.getElementById("sFotoGrid");
@@ -740,10 +942,12 @@ document.querySelectorAll('[data-cierre]').forEach(btn => {
 // SANEAMIENTO — s-confirm
 // ============================================================
 function renderResumenSaneamiento() {
+  guardarHorarios(avance);
   const rows = [
     ["Operario", currentOperario ? currentOperario.nombre : "—"],
     ["CAP", trabajo.establecimiento],
     ["Tareas de hoy", avance.tareas.join(", ") || "—"],
+    ["Horario", (avance.hora_inicio || "—") + " a " + (avance.hora_fin || "—")],
     ["Cierre", avance.cierre === "terminado" ? "Trabajo terminado" : "Continúa otro día"],
   ];
   if (operarioAcompanante) rows.splice(1, 0, ["Trabajó junto con", operarioAcompanante]);
@@ -762,7 +966,9 @@ function getQueue() { return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]")
 function setQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); updateQueueBadge(); }
 
 function sendVisita() {
-  const record = { ...visita, fotos_base64: fotosDataUrls, operario_acompanante: operarioAcompanante };
+  guardarHorarios(visita);
+  const eppTexto = visita.epp_utilizado.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
+  const record = { ...visita, epp_utilizado: eppTexto, fotos_base64: fotosDataUrls, operario_acompanante: operarioAcompanante };
   const q = getQueue();
   q.push({ tipo: "visita", data: record });
   setQueue(q);
@@ -802,9 +1008,10 @@ document.getElementById("newVisitBtn").addEventListener("click", () => {
   renderFotoGrid();
   obsSeleccionadas = [];
   notasOperador.value = "";
+  horaInicioEl.value = ""; horaFinEl.value = "";
+  horaInicioAcompEl.value = ""; horaFinAcompEl.value = "";
   [...obsChips.children].forEach(c => c.classList.remove("active"));
   [...establecimientoGrid.children].forEach(c => c.classList.remove("selected"));
-  document.querySelectorAll(".epp-tile").forEach(c => c.classList.remove("selected"));
   document.querySelectorAll('[data-resultado]').forEach(b => b.style.outline = "none");
   enterModule("mipyv");
 });
@@ -813,6 +1020,8 @@ document.getElementById("newVisitBtn").addEventListener("click", () => {
 // COLA OFFLINE + ENVÍO — SANEAMIENTO
 // ============================================================
 function sendAvance() {
+  guardarHorarios(avance);
+  const eppTexto = avance.epp_utilizado.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
   const record = {
     id_avance: "A-" + Date.now(),
     id_trabajo: trabajo.id_trabajo,
@@ -824,9 +1033,17 @@ function sendAvance() {
     tareas: avance.tareas,
     detalle: avance.detalle,
     notas: avance.notas || "",
+    epp_utilizado: eppTexto,
+    producto_biocida: avance.producto_biocida || "",
+    dosis_biocida: avance.dosis_biocida || "",
+    frecuencia_biocida: avance.frecuencia_biocida || "",
     fotos_base64: sFotosDataUrls,
     cierre: avance.cierre,
     operario_acompanante: operarioAcompanante,
+    hora_inicio: avance.hora_inicio,
+    hora_fin: avance.hora_fin,
+    hora_inicio_acompanante: avance.hora_inicio_acompanante,
+    hora_fin_acompanante: avance.hora_fin_acompanante,
   };
 
   const q = getQueue();
@@ -859,9 +1076,13 @@ document.getElementById("sNewBtn").addEventListener("click", () => {
   resetSaneamiento();
   renderSFotoGrid();
   notasSaneamiento.value = "";
+  horaInicioEl.value = ""; horaFinEl.value = "";
+  horaInicioAcompEl.value = ""; horaFinAcompEl.value = "";
   detalleSeleccionados = [];
+  detalleExtra.innerHTML = "";
   [...detalleChips.children].forEach(c => c.classList.remove("active"));
   document.querySelectorAll(".tile.multi").forEach(c => c.classList.remove("selected"));
+  [...sProductoGrid.children].forEach(c => c.classList.remove("selected"));
   document.querySelectorAll('[data-cierre]').forEach(b => b.style.outline = "none");
   [...capGridNuevo.children].forEach(c => c.classList.remove("selected"));
   enterModule("saneamiento");
