@@ -52,6 +52,10 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
   background:rgba(255,255,255,.12); border:none; color:#fff; font-family:inherit;
   padding:8px 14px; border-radius:999px; font-size:.85rem; font-weight:700;
 }
+#helpBtn{
+  width:36px; height:36px; padding:0; font-size:1.1rem; font-weight:900;
+  display:flex; align-items:center; justify-content:center;
+}
 
 /* ---------- PROGRESS ---------- */
 .progress-wrap{padding:10px 18px 0; flex:0 0 auto;}
@@ -192,6 +196,23 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 .queue-badge.show{display:block;}
 
 ::-webkit-scrollbar{display:none;}
+
+/* help overlay */
+.help-overlay{
+  position:fixed; inset:0; background:rgba(13,49,63,.72); display:none;
+  align-items:center; justify-content:center; z-index:999; padding:24px;
+}
+.help-overlay.show{display:flex;}
+.help-card{
+  background:#fff; border-radius:24px; padding:32px 26px; max-width:400px; width:100%;
+  text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.3);
+}
+.help-icon{
+  width:56px; height:56px; border-radius:50%; background:var(--mod-primary); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:900;
+  margin:0 auto 18px;
+}
+.help-text{font-size:1.15rem; line-height:1.5; color:var(--texto); margin-bottom:24px; font-weight:600;}
 </style>
 </head>
 <body>
@@ -203,6 +224,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
       <span id="brandLabel">Red HZT</span>
     </div>
     <div class="top-actions">
+      <button id="helpBtn" type="button" title="Ayuda">?</button>
       <button id="homeBtn" type="button" title="Inicio">🏠</button>
       <button id="syncBtn" type="button">Sincronizar</button>
     </div>
@@ -452,6 +474,14 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
   </div>
 
   <div class="queue-badge" id="queueBadge">0 sin enviar</div>
+
+  <div class="help-overlay" id="helpOverlay">
+    <div class="help-card">
+      <div class="help-icon">?</div>
+      <div class="help-text" id="helpText">Ayuda</div>
+      <button class="btn btn-primary" id="helpCloseBtn" type="button" style="max-width:200px;">Entendido</button>
+    </div>
+  </div>
 </div>
 
 <script src="data.js"></script>
