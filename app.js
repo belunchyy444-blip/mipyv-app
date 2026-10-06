@@ -609,17 +609,51 @@ function renderFotoGrid() {
     };
   });
 }
-photoInput.addEventListener("change", (e) => {
+photoInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    fotosDataUrls.push(ev.target.result);
-    renderFotoGrid();
-  };
-  reader.readAsDataURL(file);
   photoInput.value = "";
+  if (!file) return;
+  try {
+    fotosDataUrls.push(await comprimirFoto(file));
+    renderFotoGrid();
+  } catch (err) {
+    alert("No se pudo cargar la foto. Probá sacarla de nuevo.");
+  }
 });
+
+// ============================================================
+// COMPRESIÓN DE FOTOS — lado mayor 1280 px, JPEG calidad 0,7
+// (una foto de 3-6 MB queda en unos 200 KB)
+// ============================================================
+const FOTO_LADO_MAX = 1280;
+const FOTO_CALIDAD = 0.7;
+
+function comprimirFoto(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const escala = Math.min(1, FOTO_LADO_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.round(img.naturalWidth * escala);
+        const h = Math.round(img.naturalHeight * escala);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff"; // fondo blanco por si la imagen trae transparencia
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", FOTO_CALIDAD));
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("imagen ilegible")); };
+    img.src = url;
+  });
+}
 
 // ============================================================
 // MIPyV — m-obs (chips + notas de texto libre)
@@ -908,16 +942,16 @@ function renderSFotoGrid() {
     };
   });
 }
-sPhotoInput.addEventListener("change", (e) => {
+sPhotoInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    sFotosDataUrls.push(ev.target.result);
-    renderSFotoGrid();
-  };
-  reader.readAsDataURL(file);
   sPhotoInput.value = "";
+  if (!file) return;
+  try {
+    sFotosDataUrls.push(await comprimirFoto(file));
+    renderSFotoGrid();
+  } catch (err) {
+    alert("No se pudo cargar la foto. Probá sacarla de nuevo.");
+  }
 });
 
 const notasSaneamiento = document.getElementById("notasSaneamiento");
@@ -961,17 +995,96 @@ function renderResumenSaneamiento() {
 // ============================================================
 // COLA OFFLINE + ENVÍO — MIPyV
 // ============================================================
-const QUEUE_KEY = "mipyv_queue_v1";
-function getQueue() { return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); }
-function setQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); updateQueueBadge(); }
+// La cola vive en IndexedDB (mucho más espacio que localStorage, que se
+// llenaba con una sola foto). Cada registro queda guardado hasta que el
+// servidor responde ok: true.
+const QUEUE_KEY = "mipyv_queue_v1"; // cola vieja en localStorage (se migra sola)
+const COLA_DB = "mipyv_db";
+const COLA_STORE = "cola";
 
-function sendVisita() {
+function abrirColaDB() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("sin IndexedDB")); return; }
+    const req = indexedDB.open(COLA_DB, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(COLA_STORE)) {
+        db.createObjectStore(COLA_STORE, { keyPath: "qid", autoIncrement: true });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function colaTx(modo, accion) {
+  const db = await abrirColaDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(COLA_STORE, modo);
+    const store = tx.objectStore(COLA_STORE);
+    let resultado;
+    accion(store, (r) => { resultado = r; });
+    tx.oncomplete = () => { db.close(); resolve(resultado); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+    tx.onabort = () => { db.close(); reject(tx.error); };
+  });
+}
+
+// Agrega uno o varios registros al final de la cola, en orden.
+async function colaAgregar(items) {
+  await colaTx("readwrite", (store) => {
+    items.forEach(it => store.add({ ...it, intentos: 0, ultimo_error: "", agregado: new Date().toISOString() }));
+  });
+  updateQueueBadge();
+}
+function colaListar() {
+  return colaTx("readonly", (store, set) => {
+    const req = store.getAll();
+    req.onsuccess = () => set(req.result || []);
+  });
+}
+function colaBorrar(qid) {
+  return colaTx("readwrite", (store) => { store.delete(qid); });
+}
+function colaActualizar(item) {
+  return colaTx("readwrite", (store) => { store.put(item); });
+}
+async function colaContar() {
+  try {
+    return await colaTx("readonly", (store, set) => {
+      const req = store.count();
+      req.onsuccess = () => set(req.result);
+    });
+  } catch (err) { return 0; }
+}
+
+// Pasa a IndexedDB lo que haya quedado en la cola vieja de localStorage.
+async function migrarColaVieja() {
+  let vieja = [];
+  try { vieja = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); } catch (err) { vieja = []; }
+  if (!vieja.length) return;
+  await colaAgregar(vieja);
+  localStorage.removeItem(QUEUE_KEY);
+}
+
+async function guardarEnCola(items) {
+  try {
+    await colaAgregar(items);
+    return true;
+  } catch (err) {
+    alert("No se pudo guardar el registro en el celular. No cierres la app y avisale a Belén.");
+    return false;
+  }
+}
+
+async function sendVisita() {
   guardarHorarios(visita);
   const eppTexto = visita.epp_utilizado.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
   const record = { ...visita, epp_utilizado: eppTexto, fotos_base64: fotosDataUrls, operario_acompanante: operarioAcompanante };
-  const q = getQueue();
-  q.push({ tipo: "visita", data: record });
-  setQueue(q);
+  nextBtn.disabled = true;
+  const guardado = await guardarEnCola([{ tipo: "visita", data: record }]);
+  nextBtn.disabled = false;
+  if (!guardado) return;
 
   // actualizar cache local de intervenciones abiertas
   let abiertas = getIntervencionesAbiertas();
@@ -1019,7 +1132,7 @@ document.getElementById("newVisitBtn").addEventListener("click", () => {
 // ============================================================
 // COLA OFFLINE + ENVÍO — SANEAMIENTO
 // ============================================================
-function sendAvance() {
+async function sendAvance() {
   guardarHorarios(avance);
   const eppTexto = avance.epp_utilizado.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
   const record = {
@@ -1046,23 +1159,30 @@ function sendAvance() {
     hora_fin_acompanante: avance.hora_fin_acompanante,
   };
 
-  const q = getQueue();
+  const q = [];
   if (trabajo.esNuevo) {
-    q.push({ tipo: "trabajo_nuevo", data: { ...trabajo, operario_inicio: currentOperario.nombre } });
+    const { esNuevo, ...datosTrabajo } = trabajo;
+    q.push({ tipo: "trabajo_nuevo", data: { ...datosTrabajo, operario_inicio: currentOperario.nombre } });
   }
   q.push({ tipo: "avance", data: record });
+  if (avance.cierre === "terminado") {
+    q.push({ tipo: "cierre_trabajo", data: { id_trabajo: trabajo.id_trabajo, fecha_fin: new Date().toISOString() } });
+  }
+
+  nextBtn.disabled = true;
+  const guardado = await guardarEnCola(q);
+  nextBtn.disabled = false;
+  if (!guardado) return;
 
   let abiertos = getTrabajosAbiertos();
   if (avance.cierre === "terminado") {
     abiertos = abiertos.filter(t => t.id_trabajo !== trabajo.id_trabajo);
-    q.push({ tipo: "cierre_trabajo", data: { id_trabajo: trabajo.id_trabajo, fecha_fin: new Date().toISOString() } });
   } else {
     const idx = abiertos.findIndex(t => t.id_trabajo === trabajo.id_trabajo);
     const trabajoParaCache = { id_trabajo: trabajo.id_trabajo, id_establecimiento: trabajo.id_establecimiento, establecimiento: trabajo.establecimiento, fecha_inicio: trabajo.fecha_inicio, estado: "Abierto" };
     if (idx >= 0) abiertos[idx] = trabajoParaCache; else abiertos.push(trabajoParaCache);
   }
   setTrabajosAbiertos(abiertos);
-  setQueue(q);
 
   document.getElementById("sSentSub").textContent = navigator.onLine
     ? "Avance registrado — sincronizando…"
@@ -1091,42 +1211,85 @@ document.getElementById("sNewBtn").addEventListener("click", () => {
 // ============================================================
 // SINCRONIZACIÓN
 // ============================================================
-function updateQueueBadge() {
-  const q = getQueue();
+async function updateQueueBadge() {
+  const n = await colaContar();
   const badge = document.getElementById("queueBadge");
-  if (q.length > 0) { badge.textContent = q.length + " sin enviar"; badge.classList.add("show"); }
+  if (n > 0) { badge.textContent = n + " sin enviar"; badge.classList.add("show"); }
   else { badge.classList.remove("show"); }
 }
 
-async function trySync() {
-  if (!navigator.onLine) return;
+// Envía un registro y devuelve la respuesta del servidor ({ ok, error }).
+// Si no hay red o el servidor no contesta, lanza un error.
+async function enviarRegistro(item) {
+  const { qid, intentos, ultimo_error, agregado, ...paraEnviar } = item;
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), 90000); // 90 s máximo por registro
+  try {
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(paraEnviar),
+      signal: ctrl.signal,
+    });
+    const texto = await res.text();
+    try { return JSON.parse(texto); }
+    catch (err) { return { ok: false, error: "Respuesta no válida del servidor" }; }
+  } finally {
+    clearTimeout(corte);
+  }
+}
+
+let sincronizando = false;
+// manual = true cuando el operario toca "Sincronizar" (muestra aviso aunque no haya nada)
+async function trySync(manual) {
+  if (sincronizando) return;
+  if (!navigator.onLine) { await updateQueueBadge(); return; }
   if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
-  let q = getQueue();
-  if (q.length === 0) { showSyncFeedback("Ya está todo sincronizado"); return; }
-  const enColaAntes = q.length;
-  const pending = [...q];
+
+  let cola;
+  try { cola = await colaListar(); } catch (err) { return; }
+  if (cola.length === 0) { if (manual) showSyncFeedback("Ya está todo sincronizado"); return; }
+
+  sincronizando = true;
   const syncBtn = document.getElementById("syncBtn");
   const originalLabel = syncBtn.textContent;
   syncBtn.textContent = "Enviando…";
-  for (const item of pending) {
+
+  let enviados = 0;
+  let sinRed = false;
+  // Si falla algo de un trabajo de saneamiento, lo que sigue de ese mismo
+  // trabajo espera (para que el cierre no llegue antes que el inicio).
+  const trabajosTrabados = new Set();
+
+  for (const item of cola) {
+    const idTrabajo = item.data && item.data.id_trabajo;
+    if (idTrabajo && trabajosTrabados.has(idTrabajo)) continue;
     try {
-      await fetch(CONFIG.APPS_SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(item),
-      });
-      q = q.filter(r => r !== item);
-      setQueue(q);
+      const resp = await enviarRegistro(item);
+      if (resp && resp.ok === true) {
+        await colaBorrar(item.qid);
+        enviados++;
+      } else {
+        item.intentos = (item.intentos || 0) + 1;
+        item.ultimo_error = (resp && resp.error) || "Error desconocido";
+        await colaActualizar(item);
+        if (idTrabajo) trabajosTrabados.add(idTrabajo);
+      }
     } catch (err) {
-      console.warn("Sin conexión real o error de red, se reintenta después.", err);
+      // sin señal real o el servidor no contestó: se corta y se reintenta después
+      console.warn("Sin conexión o sin respuesta del servidor; se reintenta después.", err);
+      sinRed = true;
       break;
     }
+    await updateQueueBadge();
   }
+
   syncBtn.textContent = originalLabel;
-  const quedan = getQueue().length;
-  if (quedan === 0) showSyncFeedback(`Listo — se enviaron ${enColaAntes} registro(s)`);
-  else showSyncFeedback(`Se enviaron algunos, quedan ${quedan} pendientes`);
+  sincronizando = false;
+  const quedan = await colaContar();
+  if (quedan === 0) showSyncFeedback(`Listo — se enviaron ${enviados} registro(s)`);
+  else if (sinRed) showSyncFeedback(`Sin señal — quedan ${quedan} pendientes, se reintenta solo`);
+  else showSyncFeedback(`Quedan ${quedan} pendientes — se reintenta más tarde`);
 }
 
 function showSyncFeedback(msg) {
@@ -1136,7 +1299,7 @@ function showSyncFeedback(msg) {
   setTimeout(() => { updateQueueBadge(); }, 2500);
 }
 
-document.getElementById("syncBtn").addEventListener("click", trySync);
+document.getElementById("syncBtn").addEventListener("click", () => trySync(true));
 window.addEventListener("online", () => { setNetDot(true); trySync(); });
 window.addEventListener("offline", () => setNetDot(false));
 
@@ -1173,7 +1336,11 @@ document.getElementById("iconNuevaMipyv").innerHTML = renderIcon("calendar_new")
 document.getElementById("iconContinuarMipyv").innerHTML = renderIcon("calendar_continue");
 
 setNetDot(navigator.onLine);
-updateQueueBadge();
+migrarColaVieja()
+  .catch(err => console.warn("No se pudo migrar la cola vieja.", err))
+  .finally(() => { updateQueueBadge(); trySync(); });
+// reintento automático cada 5 minutos mientras la app esté abierta
+setInterval(() => trySync(), 5 * 60 * 1000);
 progressWrap.style.display = "none";
 bottomBar.style.display = "none";
 
