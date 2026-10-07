@@ -159,7 +159,23 @@ function canAdvance(name) {
   }
 }
 
+// La hora de fin tiene que ser posterior a la de inicio (las horas vienen
+// como "HH:MM", así que se pueden comparar como texto).
+const avisoHorario = document.createElement("div");
+avisoHorario.style.cssText = "display:none; margin-top:14px; padding:12px; border-radius:12px; background:#FDECEA; color:#8A1C12; font-weight:600;";
+document.querySelector('.screen[data-step="horario"]').appendChild(avisoHorario);
+
 function validarHorario() {
+  const errores = [];
+  if (horaInicioEl.value && horaFinEl.value && horaFinEl.value <= horaInicioEl.value) {
+    errores.push("Tu hora de finalización tiene que ser después de la de inicio.");
+  }
+  if (operarioAcompanante && horaInicioAcompEl.value && horaFinAcompEl.value && horaFinAcompEl.value <= horaInicioAcompEl.value) {
+    errores.push(`La hora de finalización de ${operarioAcompanante} tiene que ser después de la de inicio.`);
+  }
+  avisoHorario.textContent = errores.join(" ");
+  avisoHorario.style.display = errores.length ? "block" : "none";
+  if (errores.length) return false;
   if (!horaInicioEl.value || !horaFinEl.value) return false;
   if (operarioAcompanante && (!horaInicioAcompEl.value || !horaFinAcompEl.value)) return false;
   return true;
@@ -285,13 +301,55 @@ const INTERVENCIONES_KEY = "mipyv_intervenciones_abiertas_v1";
 function getIntervencionesAbiertas() { return JSON.parse(localStorage.getItem(INTERVENCIONES_KEY) || "[]"); }
 function setIntervencionesAbiertas(list) { localStorage.setItem(INTERVENCIONES_KEY, JSON.stringify(list)); }
 
-function renderIntervencionesAbiertas() {
-  pintarIntervencionesAbiertas(); // muestra lo que ya hay en el celular, sin esperar
-  fetchIntervencionesAbiertasRemotas().finally(pintarIntervencionesAbiertas);
+// Copias de las listas abiertas que manda la planilla (última descarga).
+// Se usan también sin señal. A esa lista se le suma lo que este celular
+// tiene todavía sin enviar, para que se vea al instante.
+const INTERV_PLANILLA_KEY = "mipyv_intervenciones_planilla_v1";
+const TRABAJOS_PLANILLA_KEY = "mipyv_trabajos_planilla_v1";
+function leerCopia(clave) {
+  try { const c = JSON.parse(localStorage.getItem(clave) || "null"); return c && Array.isArray(c.lista) ? c.lista : null; }
+  catch (err) { return null; }
+}
+function guardarCopia(clave, lista) {
+  try { localStorage.setItem(clave, JSON.stringify({ fecha: new Date().toISOString(), lista })); } catch (err) { /* sin espacio */ }
+}
+async function colaSegura() {
+  try { return await colaListar(); } catch (err) { return []; }
 }
 
-function pintarIntervencionesAbiertas() {
-  const list = getIntervencionesAbiertas();
+async function intervencionesParaMostrar() {
+  const dePlanilla = leerCopia(INTERV_PLANILLA_KEY);
+  if (!dePlanilla) return getIntervencionesAbiertas(); // nunca se descargó: lista propia del celular
+  const lista = dePlanilla.map(iv => ({ ...iv }));
+  const visitasPendientes = (await colaSegura())
+    .filter(it => it.tipo === "visita").map(it => it.data)
+    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+  visitasPendientes.forEach(v => {
+    const clave = v.protocolo_existente || "PENDIENTE-" + v.id_visita;
+    const idx = lista.findIndex(iv => iv.protocolo === clave || (iv.alias || []).includes(clave));
+    if (v.resultado === "Requiere otra visita") {
+      const reg = {
+        protocolo: idx >= 0 ? lista[idx].protocolo : clave,
+        alias: idx >= 0 ? lista[idx].alias : [clave],
+        id_establecimiento: v.id_establecimiento, establecimiento: v.establecimiento,
+        tipo_establecimiento: v.tipo_establecimiento, id_plaga: v.id_plaga,
+        tipo_plaga: v.tipo_plaga, sector: v.sector,
+      };
+      if (idx >= 0) lista[idx] = reg; else lista.push(reg);
+    } else if (idx >= 0) {
+      lista.splice(idx, 1); // se cerró con una visita que todavía no se envió
+    }
+  });
+  return lista;
+}
+
+function renderIntervencionesAbiertas() {
+  pintarIntervencionesAbiertas(); // muestra lo que ya hay en el celular, sin esperar
+  actualizarCatalogosDesdePlanilla().finally(pintarIntervencionesAbiertas);
+}
+
+async function pintarIntervencionesAbiertas() {
+  const list = await intervencionesParaMostrar();
   const wrap = document.getElementById("intervencionesAbiertasList");
   const msg = document.getElementById("sinIntervencionesMsg");
   wrap.innerHTML = "";
@@ -322,24 +380,6 @@ function pintarIntervencionesAbiertas() {
     };
     wrap.appendChild(card);
   });
-}
-
-async function fetchIntervencionesAbiertasRemotas() {
-  if (!navigator.onLine) return;
-  if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
-  try {
-    const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: "GET" });
-    const data = await res.json();
-    if (!data.intervenciones_abiertas) return;
-    const local = getIntervencionesAbiertas();
-    const merged = [...local];
-    data.intervenciones_abiertas.forEach(remoto => {
-      if (!merged.some(iv => iv.protocolo === remoto.protocolo)) merged.push(remoto);
-    });
-    setIntervencionesAbiertas(merged);
-  } catch (err) {
-    console.warn("No se pudieron traer intervenciones abiertas remotas.", err);
-  }
 }
 
 // ============================================================
@@ -776,13 +816,30 @@ const TRABAJOS_KEY = "mipyv_trabajos_abiertos_v1";
 function getTrabajosAbiertos() { return JSON.parse(localStorage.getItem(TRABAJOS_KEY) || "[]"); }
 function setTrabajosAbiertos(list) { localStorage.setItem(TRABAJOS_KEY, JSON.stringify(list)); }
 
-function renderTrabajosAbiertos() {
-  pintarTrabajosAbiertos(); // muestra lo que ya hay en el celular, sin esperar
-  fetchTrabajosAbiertosRemotos().finally(pintarTrabajosAbiertos);
+async function trabajosParaMostrar() {
+  const dePlanilla = leerCopia(TRABAJOS_PLANILLA_KEY);
+  if (!dePlanilla) return getTrabajosAbiertos(); // nunca se descargó: lista propia del celular
+  const lista = dePlanilla.map(t => ({ ...t }));
+  (await colaSegura()).forEach(it => {
+    const id = it.data && it.data.id_trabajo;
+    if (it.tipo === "trabajo_nuevo" && !lista.some(t => t.id_trabajo === id)) {
+      lista.push({ id_trabajo: id, id_establecimiento: it.data.id_establecimiento, establecimiento: it.data.establecimiento, fecha_inicio: it.data.fecha_inicio, estado: "Abierto" });
+    }
+    if (it.tipo === "cierre_trabajo") {
+      const idx = lista.findIndex(t => t.id_trabajo === id);
+      if (idx >= 0) lista.splice(idx, 1);
+    }
+  });
+  return lista;
 }
 
-function pintarTrabajosAbiertos() {
-  const list = getTrabajosAbiertos();
+function renderTrabajosAbiertos() {
+  pintarTrabajosAbiertos(); // muestra lo que ya hay en el celular, sin esperar
+  actualizarCatalogosDesdePlanilla().finally(pintarTrabajosAbiertos);
+}
+
+async function pintarTrabajosAbiertos() {
+  const list = await trabajosParaMostrar();
   const wrap = document.getElementById("trabajosAbiertosList");
   const msg = document.getElementById("sinTrabajosMsg");
   wrap.innerHTML = "";
@@ -802,24 +859,6 @@ function pintarTrabajosAbiertos() {
     };
     wrap.appendChild(card);
   });
-}
-
-async function fetchTrabajosAbiertosRemotos() {
-  if (!navigator.onLine) return;
-  if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
-  try {
-    const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: "GET" });
-    const data = await res.json();
-    if (!data.trabajos_abiertos) return;
-    const local = getTrabajosAbiertos();
-    const merged = [...local];
-    data.trabajos_abiertos.forEach(remoto => {
-      if (!merged.some(t => t.id_trabajo === remoto.id_trabajo)) merged.push(remoto);
-    });
-    setTrabajosAbiertos(merged);
-  } catch (err) {
-    console.warn("No se pudieron traer trabajos abiertos remotos.", err);
-  }
 }
 
 // ============================================================
@@ -1318,6 +1357,7 @@ async function trySync(manual) {
   syncBtn.textContent = originalLabel;
   sincronizando = false;
   const quedan = await colaContar();
+  if (enviados > 0) actualizarCatalogosDesdePlanilla(); // refrescar listas abiertas
   if (quedan === 0) showSyncFeedback(`Listo — se enviaron ${enviados} registro(s)`);
   else if (sinRed) showSyncFeedback(`Sin señal — quedan ${quedan} pendientes, se reintenta solo`);
   else showSyncFeedback(`Quedan ${quedan} pendientes — se reintenta más tarde`);
@@ -1490,13 +1530,9 @@ async function actualizarCatalogosDesdePlanilla() {
     try {
       localStorage.setItem(CATALOGOS_KEY, JSON.stringify({ fecha: new Date().toISOString(), catalogos }));
     } catch (err) { /* sin espacio: se sigue con lo que hay */ }
-    if (Array.isArray(datos.trabajos_abiertos)) {
-      const local = getTrabajosAbiertos();
-      datos.trabajos_abiertos.forEach(remoto => {
-        if (!local.some(t => t.id_trabajo === remoto.id_trabajo)) local.push(remoto);
-      });
-      setTrabajosAbiertos(local);
-    }
+    // listas de trabajos e intervenciones abiertas: la planilla manda
+    if (Array.isArray(datos.trabajos_abiertos)) guardarCopia(TRABAJOS_PLANILLA_KEY, datos.trabajos_abiertos);
+    if (Array.isArray(datos.intervenciones_abiertas)) guardarCopia(INTERV_PLANILLA_KEY, datos.intervenciones_abiertas);
     if (!currentModule) aplicarCatalogos(catalogos);
   } catch (err) {
     console.warn("No se pudieron descargar los catálogos de la planilla; se usa la copia del celular.", err);
