@@ -7,8 +7,12 @@ const CONFIG = {
 };
 
 // ============================================================
-// CATÁLOGOS — copia local para que la app funcione sin conexión.
-// Se pueden refrescar desde la planilla con el botón "Sincronizar".
+// CATÁLOGOS — COPIA DE RESPALDO
+// La app lee estas listas de la planilla "MIP RED HZT - Base de Datos v2"
+// cada vez que se abre con señal (hojas operarios, establecimientos,
+// sectores, plagas, productos y dosis_frecuencia) y guarda una copia en el
+// celular. Lo que está acá abajo se usa solo si el celular nunca pudo
+// descargar la planilla. Para cambiar una lista, se edita la PLANILLA.
 // ============================================================
 
 const OPERARIOS = [
@@ -18,6 +22,7 @@ const OPERARIOS = [
 
 const ESTABLECIMIENTOS = [
   { id: "HZT", nombre: "Hospital Zonal Trelew", tipo: "Hospital" },
+  { id: "HMH", nombre: "Hospital María Humphreys", tipo: "Hospital" },
   { id: "ADOL", nombre: "Adolescencia", tipo: "Dependencia" },
   { id: "CTUT", nombre: "Casa Tutelada", tipo: "Dependencia" },
   { id: "CDIA", nombre: "Centro de Día", tipo: "Dependencia" },
@@ -29,6 +34,7 @@ const ESTABLECIMIENTOS = [
   { id: "UGD", nombre: "UGD - Ex APT", tipo: "Dependencia" },
   { id: "VAC", nombre: "Vacunatorio Central", tipo: "Dependencia" },
   { id: "EXADOS", nombre: "Ex Ados", tipo: "Dependencia" },
+  { id: "CEXT", nombre: "Consultorios Externos", tipo: "Dependencia" },
   { id: "CAP-AMA", nombre: "CAPS Amaya", tipo: "CAP" },
   { id: "CAP-CON", nombre: "CAPS Constitución", tipo: "CAP" },
   { id: "CAP-COR", nombre: "CAPS Corradi", tipo: "CAP" },
@@ -42,25 +48,40 @@ const ESTABLECIMIENTOS = [
   { id: "CAP-VIT", nombre: "CAPS Villa Italia", tipo: "CAP" },
 ];
 
-// Sectores completos (HZT) — el resto de dependencias usa el subconjunto reducido
+// Sectores de los hospitales (hoja sectores, aplica_hospital = SI)
 const SECTORES_HZT = [
-  "Administración","Admisión","Anatomía Patológica","Bacteriología","Camilleros","Cardiología",
-  "Central de Esterilización","Centro Obstétrico / Maternidad","Centro Quirúrgico","Cirugía",
-  "Clínica Médica","Clínica Quirúrgica","Cocina","Consultorios Externos","Cuidados Progresivos",
-  "Depósito","Diagnóstico por Imágenes","Dirección","Ecografía","Estadística","Farmacia",
-  "Hemoterapia","Higiene y Seguridad","Informática / Sistemas","Internación Pediátrica",
+  "Administración","Admisión","Anatomía Patológica",
+  "Arancelamiento / Recuperación de Prestaciones","Archivo",
+  "Área Externa / Atención Comunitaria","Asesoría Legal","Bacteriología",
+  "Bioingeniería / Electromedicina","Camilleros","Cardiología","Central de Esterilización",
+  "Centro Obstétrico / Maternidad y Obstetricia","Centro Quirúrgico","Choferes / Ambulancias",
+  "Cirugía","Clínica Médica","Clínica Quirúrgica","Cocina","Comité de Bioética",
+  "Comité de Calidad y Seguridad del Paciente","Comité de Docencia e Investigación",
+  "Comité de Prevención y Control de Infecciones","Compras y Contrataciones",
+  "Comunicación Institucional","Consultorios Externos","Cuidados Progresivos",
+  "Departamento Contable","Depósito","Diagnóstico por Imágenes","Dirección",
+  "Dirección Asociada Administrativa","Dirección Asociada Médica",
+  "Dispositivos Comunitarios de Salud Mental","División de Enfermería","Docencia","Ecografía",
+  "Escuela Hospitalaria Domiciliaria","Estadística","Farmacia","Fonoaudiología",
+  "Gestión de Pacientes","Hemoterapia","Higiene y Seguridad","Informática / Sistemas",
+  "Informes / Isla de Informes","Internación de Salud Mental","Internación Pediátrica",
   "Kinesiología / Rehabilitación","Laboratorio","Lactario","Lavadero y Ropería",
   "Maestranza / Servicios Generales","Mamografía","Mantenimiento","Mesa de Entradas","Morgue",
   "Mucamas / Servicios Generales","Nefrología","Neonatología / UCIN","Nutrición y Dietoterapia",
-  "Oncología","Pediatría","Personal / RRHH","Portería","Psicología","Psiquiatría",
-  "Salud Mental","Seguridad / Vigilancia","Terapia Intensiva / UTI Adultos","Trabajo Social",
-  "Traumatología","UCIP","UMU / Guardia / Emergencias","Otro",
+  "Oncología","Patrimonio / Inventario","Pediatría","Personal / Recursos Humanos","Portería",
+  "PROSATE","Psicología","Psiquiatría","Registro Civil","Residencias","Salud Mental",
+  "Secretaría de Dirección","Seguridad / Vigilancia","Telesalud / Teleconsulta",
+  "Terapia Intensiva / UTI Adultos","Terapia Intermedia de Adultos","Terapia Ocupacional",
+  "Tesorería","Trabajo Social","Traumatología","UCIP","UMU / Guardia / Emergencias",
+  "No corresponde","Otro",
 ];
 
+// Sectores de dependencias y CAPS (hoja sectores, aplica_dependencias_caps = SI)
 const SECTORES_DEPENDENCIAS = [
-  "Administración","Admisión","Consultorios Externos","Depósito","Farmacia","Cocina",
-  "Salud Mental","Trabajo Social","Psicología","Portería","Seguridad / Vigilancia",
-  "Mantenimiento","Mucamas / Servicios Generales","Otro",
+  "Administración","Admisión","Cocina","Consultorios Externos","Depósito",
+  "Dispositivos Comunitarios de Salud Mental","Farmacia","Mantenimiento",
+  "Mucamas / Servicios Generales","Portería","Psicología","Salud Mental",
+  "Seguridad / Vigilancia","Trabajo Social","No corresponde","Otro",
 ];
 
 const PLAGAS = [
@@ -87,11 +108,12 @@ const PRODUCTOS = [
   { id: "PRD-06", nombre: "K-Othrina o similar", color: "#4A7A9E", icono: "spray" },
   { id: "PRD-07", nombre: "Huagro Chipre o similar", color: "#5A9E7A", icono: "spray" },
   { id: "PRD-08", nombre: "Aquiles o similar", color: "#8A6F52", icono: "pellet" },
-  { id: "PRD-09", nombre: "Geltex / Gel hormiguicida", color: "#8A5A2E", icono: "pellet" },
-  { id: "PRD-10", nombre: "Chemoxane F / FumiXan Pro", color: "#6E4A8A", icono: "spray" },
-  { id: "PRD-11", nombre: "Ultra Plus / Biorat pellet", color: "#0D313F", icono: "pellet" },
+  { id: "PRD-09", nombre: "Geltex o similar (Gel hormiguicida)", color: "#8A5A2E", icono: "pellet" },
+  { id: "PRD-10", nombre: "Chemoxane F / FumiXan Pro o similar", color: "#6E4A8A", icono: "spray" },
+  { id: "PRD-11", nombre: "Ultra Plus o similar (Biorat pellet)", color: "#0D313F", icono: "pellet" },
   { id: "PRD-12", nombre: "Huagro Rat o similar", color: "#5A5A5A", icono: "pellet" },
-  { id: "PRD-13", nombre: "Exclusión física", color: "#2E9E5B", icono: "shield" },
+  { id: "PRD-13", nombre: "Exclusión física / control físico", color: "#2E9E5B", icono: "shield" },
+  { id: "PRD-14", nombre: "Sin aplicación (solo inspección)", color: "#5A6E7A", icono: "generic" },
 ];
 
 // Catálogo técnico dosis/frecuencia por combinación plaga+producto (editable solo por HyS)
@@ -117,7 +139,7 @@ const DOSIS_FRECUENCIA = {
   "PLA-08|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
   "PLA-08|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
   "PLA-08|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
-  "PLA-09|PRD-10": { dosis: "25 ml por litro de agua", frecuencia: "Cada 10 días", puntos: "Camas, colchones, grietas, textiles, áreas de descanso" },
+  "PLA-09|PRD-10": { dosis: "Aplicación en ambiente cerrado según fabricante y procedimiento", frecuencia: "Según necesidad", puntos: "Camas, colchones, grietas, textiles, áreas de descanso" },
   "PLA-10|PRD-13": { dosis: "Sellado de ingresos y derivación a autoridad competente", frecuencia: "Según necesidad", puntos: "Entretechos, aleros, cámaras técnicas, cielorrasos" },
   "PLA-11|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
   "PLA-11|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
@@ -126,6 +148,8 @@ const DOSIS_FRECUENCIA = {
   "PLA-12|PRD-09": { dosis: "Aplicación puntual en trayectorias, grietas y puntos de ingreso", frecuencia: "Cada 10 días", puntos: "Cocinas, grietas, zócalos, marcos de puertas y puntos de ingreso" },
 };
 const DOSIS_DEFAULT = { dosis: "Consultar a HyS — combinación sin definir", frecuencia: "Consultar a HyS", puntos: "—" };
+// Para productos de la familia "inspeccion" (no se aplicó nada)
+const DOSIS_SIN_APLICACION = { dosis: "No aplica — no se usó producto", frecuencia: "—", puntos: "—" };
 
 // Recomendaciones de seguridad por familia de producto — se muestran al operario
 // después de elegir el producto, antes de ver la dosis. Basadas en HDS + historial real.
@@ -175,6 +199,14 @@ const RECOMENDACIONES_SEGURIDAD = {
       "Retirar nidos o excretas con precaución, evitando dispersión",
     ],
   },
+  inspeccion: {
+    titulo: "Inspección sin producto",
+    items: [
+      "No se aplica ningún producto en esta visita",
+      "Usar guantes y barbijo si hay que mover muebles, cajas o revisar rincones",
+      "Anotar en observaciones qué se vio y qué hace falta (producto, reparación, limpieza)",
+    ],
+  },
   general: {
     titulo: "Cuidados generales",
     items: [
@@ -201,6 +233,7 @@ const FAMILIA_PRODUCTO = {
   "PRD-11": ["rodenticida", "general"],
   "PRD-12": ["rodenticida", "general"],
   "PRD-13": ["fisico"],
+  "PRD-14": ["inspeccion", "general"],
 };
 
 const EPP = [
@@ -279,7 +312,7 @@ const AYUDA_TEXTOS = {
   "m-establecimiento": "Tocá el lugar donde estás ahora.",
   "m-sector": "Tocá el sector donde interviniste. Si es un CAP, tocá el que más se parezca o escribilo.",
   "m-plaga": "Tocá la imagen de la plaga que viste.",
-  "m-producto": "Tocá la imagen del producto que usaste.",
+  "m-producto": "Tocá la imagen del producto que usaste. Si no usaste ninguno (solo revisaste), tocá «Sin aplicación (solo inspección)».",
   "m-seguridad": "Leé los cuidados de este producto antes de aplicarlo. Después tocá \"Siguiente\".",
   "m-dosis": "Esta es la dosis correcta, ya viene puesta. No hace falta que hagas nada, solo tocá \"Siguiente\".",
   "m-epp": "Tocá todos los elementos de protección que usaste (podés tocar varios). Después ajustá la cantidad con los botones + y -.",
@@ -291,7 +324,7 @@ const AYUDA_TEXTOS = {
   "s-cap-nuevo": "Tocá el CAP donde estás.",
   "s-cap-continuar": "Tocá el trabajo que vas a seguir.",
   "s-tareas": "Tocá todas las tareas que hiciste hoy (podés tocar varias).",
-  "s-producto": "Tocá la imagen del producto que usaste.",
+  "s-producto": "Tocá la imagen del producto que usaste. Si no usaste ninguno, tocá «Sin aplicación (solo inspección)».",
   "s-seguridad": "Leé los cuidados de este producto antes de aplicarlo. Después tocá \"Siguiente\".",
   "s-dosis": "Esta es la dosis correcta, ya viene puesta. No hace falta que hagas nada, solo tocá \"Siguiente\".",
   "s-epp": "Tocá todos los elementos de protección que usaste. Después ajustá la cantidad con los botones + y -.",
