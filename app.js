@@ -69,6 +69,7 @@ const homeBtn = document.getElementById("homeBtn");
 
 function goHome() {
   currentModule = null;
+  cargarCatalogosGuardados(); // por si se descargaron listas nuevas mientras cargaba
   document.body.classList.remove("mode-saneamiento");
   brandLabel.textContent = "Red HZT";
   progressWrap.style.display = "none";
@@ -188,6 +189,8 @@ backBtn.addEventListener("click", goBack);
 // PASO COMPARTIDO — QUIEN SOS
 // ============================================================
 const operarioGrid = document.getElementById("operarioGrid");
+function renderOperarios() {
+operarioGrid.innerHTML = "";
 OPERARIOS.forEach(op => {
   const btn = document.createElement("button");
   btn.className = "tile big person-tile";
@@ -202,6 +205,8 @@ OPERARIOS.forEach(op => {
   };
   operarioGrid.appendChild(btn);
 });
+}
+renderOperarios();
 
 // ============================================================
 // PASO COMPARTIDO — ACOMPAÑANTE (trabajó solo o con el otro operario)
@@ -443,6 +448,8 @@ sectorInput.addEventListener("input", () => {
 // MIPyV — m-plaga
 // ============================================================
 const plagaGrid = document.getElementById("plagaGrid");
+function renderPlagas() {
+plagaGrid.innerHTML = "";
 PLAGAS.forEach(pl => {
   const btn = document.createElement("button");
   btn.className = "tile";
@@ -457,11 +464,15 @@ PLAGAS.forEach(pl => {
   };
   plagaGrid.appendChild(btn);
 });
+}
+renderPlagas();
 
 // ============================================================
 // MIPyV — m-producto
 // ============================================================
 const productoGrid = document.getElementById("productoGrid");
+function renderProductos() {
+productoGrid.innerHTML = "";
 PRODUCTOS.forEach(pr => {
   const btn = document.createElement("button");
   btn.className = "tile";
@@ -476,10 +487,22 @@ PRODUCTOS.forEach(pr => {
   };
   productoGrid.appendChild(btn);
 });
+}
+renderProductos();
+
+// Dosis según plaga + producto. Si el producto es "sin aplicación"
+// (familia inspeccion en la hoja productos), no se busca dosis.
+function dosisPara(idPlaga, idProducto) {
+  const familias = FAMILIA_PRODUCTO[idProducto] || [];
+  if (familias.includes("inspeccion")) return DOSIS_SIN_APLICACION;
+  if (idPlaga) return DOSIS_FRECUENCIA[`${idPlaga}|${idProducto}`] || DOSIS_DEFAULT;
+  // saneamiento: cualquier plaga que use este producto
+  const combo = Object.keys(DOSIS_FRECUENCIA).find(k => k.endsWith("|" + idProducto));
+  return combo ? DOSIS_FRECUENCIA[combo] : DOSIS_DEFAULT;
+}
 
 function applyDosisFrecuencia() {
-  const key = `${visita.id_plaga}|${visita.id_producto}`;
-  const d = DOSIS_FRECUENCIA[key] || DOSIS_DEFAULT;
+  const d = dosisPara(visita.id_plaga, visita.id_producto);
   visita.dosis_aplicada = d.dosis;
   visita.frecuencia_recomendada = d.frecuencia;
   visita.puntos_criticos = d.puntos;
@@ -723,6 +746,8 @@ document.getElementById("sContinuarBtn").addEventListener("click", () => {
 // SANEAMIENTO — s-cap-nuevo
 // ============================================================
 const capGridNuevo = document.getElementById("capGridNuevo");
+function renderCapsNuevo() {
+capGridNuevo.innerHTML = "";
 CAPS_SANEAMIENTO.forEach(cap => {
   const btn = document.createElement("button");
   btn.className = "tile";
@@ -740,6 +765,8 @@ CAPS_SANEAMIENTO.forEach(cap => {
   };
   capGridNuevo.appendChild(btn);
 });
+}
+renderCapsNuevo();
 
 // ============================================================
 // SANEAMIENTO — s-cap-continuar
@@ -798,6 +825,8 @@ async function fetchTrabajosAbiertosRemotos() {
 // SANEAMIENTO — s-producto / s-seguridad / s-dosis (biocida, opcional)
 // ============================================================
 const sProductoGrid = document.getElementById("sProductoGrid");
+function renderSProductos() {
+sProductoGrid.innerHTML = "";
 PRODUCTOS.forEach(pr => {
   const btn = document.createElement("button");
   btn.className = "tile";
@@ -812,11 +841,12 @@ PRODUCTOS.forEach(pr => {
   };
   sProductoGrid.appendChild(btn);
 });
+}
+renderSProductos();
 
 function applyDosisFrecuenciaSaneamiento() {
   // usa la misma tabla de dosis, buscando cualquier plaga que use este producto
-  const combo = Object.keys(DOSIS_FRECUENCIA).find(k => k.endsWith("|" + avance.id_producto_biocida));
-  const d = combo ? DOSIS_FRECUENCIA[combo] : DOSIS_DEFAULT;
+  const d = dosisPara(null, avance.id_producto_biocida);
   avance.dosis_biocida = d.dosis;
   avance.frecuencia_biocida = d.frecuencia;
   avance.puntos_criticos_biocida = d.puntos;
@@ -1326,6 +1356,133 @@ document.getElementById("helpOverlay").addEventListener("click", (e) => {
 });
 
 // ============================================================
+// CATÁLOGOS DESDE LA PLANILLA
+// Al abrir con señal, la app descarga de la planilla las listas
+// (operarios, establecimientos, sectores, plagas, productos, dosis) y
+// guarda una copia en el celular. Sin señal usa esa copia; si nunca pudo
+// descargar, usa las listas de respaldo de data.js.
+// ============================================================
+const CATALOGOS_KEY = "mipyv_catalogos_v1";
+
+const esSi = (v) => String(v || "").trim().toUpperCase().startsWith("SI");
+const texto = (v) => String(v === undefined || v === null ? "" : v).trim();
+
+function reemplazarLista(lista, nuevos) {
+  if (!Array.isArray(nuevos) || nuevos.length === 0) return false; // nunca vaciar una lista
+  lista.length = 0;
+  nuevos.forEach(x => lista.push(x));
+  return true;
+}
+function reemplazarObjeto(obj, nuevo) {
+  if (!nuevo || Object.keys(nuevo).length === 0) return false;
+  Object.keys(obj).forEach(k => delete obj[k]);
+  Object.assign(obj, nuevo);
+  return true;
+}
+
+// Convierte lo que devuelve la planilla al formato que usa la app.
+function convertirCatalogos(d) {
+  const out = {};
+  if (Array.isArray(d.operarios)) {
+    out.operarios = d.operarios
+      .filter(r => texto(r.id_operario) && esSi(r.activo))
+      .map(r => ({ id: texto(r.id_operario), nombre: texto(r.nombre), inicial: texto(r.inicial) || texto(r.nombre).charAt(0) }));
+  }
+  if (Array.isArray(d.establecimientos)) {
+    out.establecimientos = d.establecimientos
+      .filter(r => texto(r.id_establecimiento) && esSi(r.activo))
+      .map(r => ({ id: texto(r.id_establecimiento), nombre: texto(r.nombre), tipo: texto(r.tipo) }));
+  }
+  if (Array.isArray(d.sectores)) {
+    out.sectores_hospital = d.sectores.filter(r => texto(r.nombre_sector) && esSi(r.aplica_hospital)).map(r => texto(r.nombre_sector));
+    out.sectores_dependencias = d.sectores.filter(r => texto(r.nombre_sector) && esSi(r.aplica_dependencias_caps)).map(r => texto(r.nombre_sector));
+  }
+  if (Array.isArray(d.plagas)) {
+    out.plagas = d.plagas
+      .filter(r => texto(r.id_plaga))
+      .map(r => ({ id: texto(r.id_plaga), nombre: texto(r.nombre_plaga), icono: texto(r.icono) || "bug" }));
+  }
+  if (Array.isArray(d.productos)) {
+    const activos = d.productos.filter(r => texto(r.id_producto) && !/^(inactivo|no)\b/i.test(texto(r.estado)));
+    out.productos = activos.map(r => ({
+      id: texto(r.id_producto), nombre: texto(r.nombre_comercial),
+      color: texto(r.color) || "#5894A7", icono: texto(r.icono) || "bottle",
+    }));
+    out.familias = {};
+    activos.forEach(r => {
+      const fam = texto(r.familia_seguridad).split(",").map(x => x.trim()).filter(Boolean);
+      out.familias[texto(r.id_producto)] = fam.length ? fam : ["general"];
+    });
+  }
+  if (Array.isArray(d.dosis_frecuencia)) {
+    out.dosis = {};
+    d.dosis_frecuencia.forEach(r => {
+      if (!texto(r.id_plaga) || !texto(r.id_producto)) return;
+      out.dosis[`${texto(r.id_plaga)}|${texto(r.id_producto)}`] = {
+        dosis: texto(r.dosis_estandar) || DOSIS_DEFAULT.dosis,
+        frecuencia: texto(r.frecuencia_estandar) || DOSIS_DEFAULT.frecuencia,
+        puntos: texto(r.puntos_criticos_sugeridos) || "—",
+      };
+    });
+  }
+  return out;
+}
+
+function aplicarCatalogos(c) {
+  if (!c) return;
+  reemplazarLista(OPERARIOS, c.operarios);
+  reemplazarLista(ESTABLECIMIENTOS, c.establecimientos);
+  reemplazarLista(SECTORES_HZT, c.sectores_hospital);
+  reemplazarLista(SECTORES_DEPENDENCIAS, c.sectores_dependencias);
+  reemplazarLista(PLAGAS, c.plagas);
+  reemplazarLista(PRODUCTOS, c.productos);
+  reemplazarObjeto(FAMILIA_PRODUCTO, c.familias);
+  reemplazarObjeto(DOSIS_FRECUENCIA, c.dosis);
+  reemplazarLista(CAPS_SANEAMIENTO, ESTABLECIMIENTOS.filter(e => e.tipo === "CAP"));
+  // volver a dibujar las grillas con las listas nuevas
+  renderOperarios();
+  renderEstablecimientos();
+  renderPlagas();
+  renderProductos();
+  renderSProductos();
+  renderCapsNuevo();
+}
+
+function cargarCatalogosGuardados() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CATALOGOS_KEY) || "null");
+    if (guardado && guardado.catalogos) aplicarCatalogos(guardado.catalogos);
+  } catch (err) {
+    console.warn("No se pudo leer la copia de catálogos del celular.", err);
+  }
+}
+
+// Solo actualiza las pantallas si el operario está en el inicio,
+// para no cambiarle la lista mientras está cargando una visita.
+async function actualizarCatalogosDesdePlanilla() {
+  if (!navigator.onLine) return;
+  if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
+  try {
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: "GET" });
+    const datos = await res.json();
+    const catalogos = convertirCatalogos(datos);
+    try {
+      localStorage.setItem(CATALOGOS_KEY, JSON.stringify({ fecha: new Date().toISOString(), catalogos }));
+    } catch (err) { /* sin espacio: se sigue con lo que hay */ }
+    if (Array.isArray(datos.trabajos_abiertos)) {
+      const local = getTrabajosAbiertos();
+      datos.trabajos_abiertos.forEach(remoto => {
+        if (!local.some(t => t.id_trabajo === remoto.id_trabajo)) local.push(remoto);
+      });
+      setTrabajosAbiertos(local);
+    }
+    if (!currentModule) aplicarCatalogos(catalogos);
+  } catch (err) {
+    console.warn("No se pudieron descargar los catálogos de la planilla; se usa la copia del celular.", err);
+  }
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.getElementById("iconBug").innerHTML = renderIcon("bug");
@@ -1336,6 +1493,8 @@ document.getElementById("iconNuevaMipyv").innerHTML = renderIcon("calendar_new")
 document.getElementById("iconContinuarMipyv").innerHTML = renderIcon("calendar_continue");
 
 setNetDot(navigator.onLine);
+cargarCatalogosGuardados();
+actualizarCatalogosDesdePlanilla();
 migrarColaVieja()
   .catch(err => console.warn("No se pudo migrar la cola vieja.", err))
   .finally(() => { updateQueueBadge(); trySync(); });
