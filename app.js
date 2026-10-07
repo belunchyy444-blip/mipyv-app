@@ -69,6 +69,7 @@ const homeBtn = document.getElementById("homeBtn");
 
 function goHome() {
   currentModule = null;
+  if (hayVersionNueva) { window.location.reload(); return; }
   cargarCatalogosGuardados(); // por si se descargaron listas nuevas mientras cargaba
   document.body.classList.remove("mode-saneamiento");
   brandLabel.textContent = "Red HZT";
@@ -1340,10 +1341,30 @@ function setNetDot(online) {
 // ============================================================
 // AYUDA — botón "?" con explicación simple de la pantalla actual
 // ============================================================
-function showHelp() {
+async function showHelp() {
   const pasoActual = currentModule ? stepList[stepIndex] : "home";
   const texto = AYUDA_TEXTOS[pasoActual] || "Tocá las imágenes grandes para avanzar. Si tenés dudas, preguntale a Belén.";
-  document.getElementById("helpText").textContent = texto;
+  const helpText = document.getElementById("helpText");
+  helpText.textContent = texto;
+  // pie de la ayuda: versión y, en el inicio, el estado de lo pendiente
+  const pie = document.createElement("div");
+  pie.style.cssText = "margin-top:14px; font-size:.8rem; opacity:.7;";
+  let detalle = "Versión " + APP_VERSION;
+  if (pasoActual === "home") {
+    try {
+      const cola = await colaListar();
+      if (cola.length) {
+        detalle += ` · ${cola.length} registro(s) sin enviar`;
+        const conError = cola.find(it => it.ultimo_error);
+        if (conError) detalle += ` · último aviso de la planilla: ${conError.ultimo_error}`;
+      } else {
+        detalle += " · todo enviado";
+      }
+    } catch (err) { /* sin datos de la cola */ }
+  }
+  detalle += " · Si algo no anda, avisale a Belén.";
+  pie.textContent = detalle;
+  helpText.appendChild(pie);
   document.getElementById("helpOverlay").classList.add("show");
 }
 function hideHelp() {
@@ -1503,6 +1524,26 @@ setInterval(() => trySync(), 5 * 60 * 1000);
 progressWrap.style.display = "none";
 bottomBar.style.display = "none";
 
+document.getElementById("appVersion").textContent = "Versión " + APP_VERSION;
+
+// ============================================================
+// ACTUALIZACIÓN AUTOMÁTICA
+// El celular revisa si hay versión nueva cada vez que se abre la app.
+// Si la hay, la descarga y se recarga sola, pero solo en la pantalla de
+// inicio, para no cortar a nadie a mitad de una carga.
+// ============================================================
+let hayVersionNueva = false;
+function recargarSiCorresponde() {
+  if (hayVersionNueva && !currentModule) window.location.reload();
+}
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  const yaTeniaVersion = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" })
+    .then(reg => reg.update())
+    .catch(() => {});
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!yaTeniaVersion) return; // primera instalación: no hace falta recargar
+    hayVersionNueva = true;
+    recargarSiCorresponde();
+  });
 }
