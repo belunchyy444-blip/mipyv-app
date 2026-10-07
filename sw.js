@@ -1,13 +1,23 @@
-// IMPORTANTE: cambiar este número (v2, v3, v4...) CADA VEZ que se actualice
-// algún archivo de la app. Si no se cambia, el navegador nunca detecta que
-// hay una versión nueva y sigue mostrando la copia vieja para siempre.
-const CACHE_NAME = "mipyv-cache-v7";
+// ============================================================
+// SERVICE WORKER — MIPyV Red HZT
+// Guarda la app en el celular para que funcione sin señal.
+// El número de versión NO se cambia acá: se cambia en version.js.
+// Cuando version.js cambia, el celular detecta la versión nueva,
+// la descarga y la app se recarga sola al volver a la pantalla de inicio.
+// ============================================================
+importScripts("version.js"); // define APP_VERSION
+
+const CACHE_NAME = "mipyv-cache-" + APP_VERSION;
 const FILES_TO_CACHE = [
+  "./",
   "./index.html",
+  "./version.js",
   "./app.js",
   "./data.js",
   "./icons.js",
   "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png",
 ];
 
 self.addEventListener("install", (e) => {
@@ -27,10 +37,12 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
-  // network-first para el propio Apps Script (siempre intenta enviar en vivo);
-  // cache-first para los archivos estáticos de la app.
+  // Solo se atienden los archivos propios de la app. Lo que va a la
+  // planilla (Apps Script) sale siempre directo a internet.
   if (e.request.method !== "GET") return;
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request).catch(() => cached))
+    caches.match(e.request, { ignoreSearch: true })
+      .then((cached) => cached || fetch(e.request))
   );
 });
