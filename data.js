@@ -303,7 +303,7 @@ const CHIPS_CON_DETALLE = {
 // AYUDA — texto simple por pantalla, para el botón "?"
 // ============================================================
 const AYUDA_TEXTOS = {
-  home: "Tocá el cuadro del módulo que necesitás: MIPyV para plagas, o Limpieza y Saneamiento para las tareas de los CAPs.",
+  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas), o Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques). Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal.",
   quien: "Tocá tu nombre en la lista.",
   acompanante: "Si hoy trabajaste solo/a, tocá esa opción. Si estuviste con el otro operario, tocá la otra — así queda registrado que fueron los dos.",
   horario: "Tocá para elegir la hora en que empezaste y la hora en que terminaste. Si trabajaste con el otro operario, también sus horarios.",
@@ -317,9 +317,10 @@ const AYUDA_TEXTOS = {
   "m-dosis": "Esta es la dosis correcta, ya viene puesta. No hace falta que hagas nada, solo tocá \"Siguiente\".",
   "m-epp": "Tocá todos los elementos de protección que usaste (podés tocar varios). Después ajustá la cantidad con los botones + y -.",
   "m-resultado": "Tocá cómo quedó la situación.",
-  "m-foto": "Tocá el recuadro para sacar una foto del sector.",
+  "m-foto": "Tocá el recuadro con el + para sacar una foto. Podés sacar hasta 5. Para borrar una, tocá la X. Si no hace falta foto, tocá \"Siguiente\".",
   "m-obs": "Si querés, tocá algún cartelito o escribí una nota. No es obligatorio, podés tocar \"Siguiente\" igual.",
-  "m-confirm": "Revisá los datos. Si está todo bien, tocá \"Enviar\".",
+  "m-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
+  "m-sent": "Listo, la visita quedó guardada. Si arriba dice \"sin enviar\", no pasa nada: se manda sola cuando haya señal. No borres la app ni los datos del navegador mientras haya registros sin enviar.",
   "s-tipo": "¿Empezás hoy? Tocá \"Iniciar trabajo nuevo\". ¿Ya venías con este trabajo? Tocá \"Continuar un trabajo abierto\".",
   "s-cap-nuevo": "Tocá el CAP donde estás.",
   "s-cap-continuar": "Tocá el trabajo que vas a seguir.",
@@ -328,7 +329,8 @@ const AYUDA_TEXTOS = {
   "s-seguridad": "Leé los cuidados de este producto antes de aplicarlo. Después tocá \"Siguiente\".",
   "s-dosis": "Esta es la dosis correcta, ya viene puesta. No hace falta que hagas nada, solo tocá \"Siguiente\".",
   "s-epp": "Tocá todos los elementos de protección que usaste. Después ajustá la cantidad con los botones + y -.",
-  "s-detalle": "Tocá lo que corresponda y sacá una foto. Si tocás algún cartelito con un ícono de pregunta, contestá abajo qué pasó.",
+  "s-detalle": "Tocá los cartelitos que correspondan. Si tocás uno con ❓, escribí abajo qué pasó (es obligatorio). Podés sacar hasta 5 fotos con el recuadro +.",
   "s-cierre": "¿Vas a seguir otro día en este CAP? Tocá \"Continúa otro día\". ¿Ya terminaste? Tocá \"Terminado\".",
-  "s-confirm": "Revisá los datos. Si está todo bien, tocá \"Enviar\".",
+  "s-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
+  "s-sent": "Listo, el avance quedó guardado. Si arriba dice \"sin enviar\", no pasa nada: se manda solo cuando haya señal. No borres la app ni los datos del navegador mientras haya registros sin enviar.",
 };
