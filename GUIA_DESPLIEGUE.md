@@ -1,101 +1,147 @@
-# Guía de despliegue — App MIPyV + Limpieza y Saneamiento (frente de carga)
+# MIPyV Red HZT — Guía de despliegue y administración
 
-Esta app es un conjunto de archivos estáticos (HTML/CSS/JS). No necesita
-servidor propio: se aloja gratis en GitHub Pages, igual que tus otras apps
-(SIEQ, app_limpieza, HMH Contraincendios). El "cerebro" de guardado vive en
-un pequeño script pegado directamente en la planilla de Google.
+Versión de la guía: 7 de octubre de 2026 (rev. noche) · App 2026.10.07b · Servidor 2026-10-07f · Alcance: Área Trelew (HZT, HMH, dependencias y CAPS)
 
-La app tiene una pantalla de inicio para elegir el módulo:
-- **MIPyV** (azul) — control de plagas y vectores, como ya lo veníamos armando.
-- **Limpieza y Saneamiento** (verde) — reporte de trabajo de la propuesta
-  PROP-HYS-045 (predios, insecticida doméstico, cañerías, tanques de agua,
-  roedores/sellado, desagües pluviales) en los 11 CAPs del Área Externa.
+App de registro de control de plagas y vectores (MIPyV) y de limpieza y saneamiento (PROP-HYS-045), para uso de los operarios del Servicio de Higiene y Seguridad desde el celular, con o sin señal.
 
-## Paso 1 — Conectar la app a tu planilla (Apps Script)
+**Marco normativo.** El registro de las intervenciones de control de plagas y de saneamiento forma parte de las funciones de prevención del Servicio de Higiene y Seguridad en el Trabajo¹ y de las condiciones de higiene de los establecimientos² ³.
 
-1. Abrí la planilla **"MIP RED HZT - Base de Datos v2"**.
-2. Extensiones → Apps Script.
-3. Borrá el contenido de `Code.gs` y pegá el contenido completo de
-   `Codigo_AppsScript.gs` (incluido en esta entrega).
-4. Guardá (ícono de disquete).
+---
 
-## Paso 2 — Crear las hojas del módulo de Saneamiento
+## 1. Cómo está armado
 
-1. En el desplegable de funciones (arriba, al lado del ícono ▷), elegí
-   **setupSaneamientoSheets**.
-2. Clic en ▷ **Ejecutar**. La primera vez te va a pedir autorización:
-   aceptá los permisos.
-3. Te va a aparecer un cartel "Listo: hojas de Saneamiento creadas/verificadas."
-   Esto agrega dos pestañas nuevas a la planilla: `trabajos_saneamiento`
-   (un registro por cada intervención de varios días en un CAP) y
-   `avances_saneamiento` (un registro por cada día de trabajo cargado).
+| Parte | Dónde está | Qué hace |
+|---|---|---|
+| App | GitHub Pages: `belunchyy444-blip.github.io/mipyv-app` | Lo que usan los operarios en el celular. Funciona sin señal. |
+| Planilla | «MIP RED HZT - Base de Datos v2» (Drive de belunchyy444) | Guarda todo y tiene las listas que muestra la app. |
+| Servidor | Apps Script pegado en la planilla (`Código.gs`) | Recibe los registros, guarda las fotos en Drive y entrega las listas a la app. |
+| Fotos | Drive › «MIPyV Red HZT - Fotos» › establecimiento › fecha | Fotos comprimidas (unos 60-200 KB cada una). Los enlaces quedan en la columna `foto_url`, separados por « \| ». |
 
-## Paso 3 — Publicar el script como Web App
+Archivos del repositorio `mipyv-app`: `index.html`, `version.js`, `app.js`, `data.js`, `icons.js`, `sw.js`, `manifest.json`, `icon-192.png`, `icon-512.png`, `Codigo_AppsScript.gs` (copia de respaldo del servidor) y esta guía.
 
-1. En el editor de Apps Script: **Implementar → Nueva implementación**.
-2. Tipo: **Aplicación web**.
-3. Ejecutar como: **Yo (tu cuenta)**.
-4. Quién tiene acceso: **Cualquier usuario** (necesario para que la app de
-   los operarios pueda enviar datos sin que ellos tengan que loguearse).
-5. Clic en **Implementar**. Google va a pedir autorización la primera vez:
-   aceptá los permisos (es tu propio script, sobre tu propia planilla).
-6. Copiá la **URL de la aplicación web** que te da (termina en `/exec`).
+**Correos automáticos:** solo los que figuran en la sección 5 bis (resumen diario y recordatorio a operarios). Los seguimientos vencidos quedan en una hoja de la planilla.
 
-## Paso 4 — Pegar la URL en la app
+---
 
-1. Abrí el archivo `data.js`.
-2. Reemplazá:
-   ```js
-   APPS_SCRIPT_URL: "PEGAR_ACA_LA_URL_DEL_APPS_SCRIPT",
-   ```
-   por la URL que copiaste en el paso 3.
+## 2. Qué hay en la planilla
 
-## Paso 5 — Publicar la app (GitHub Pages)
+| Hoja | Para qué | ¿Se edita a mano? |
+|---|---|---|
+| `visitas` | Una fila por cada visita MIPyV. | Solo la columna `revisado_hys` y, si corresponde, `protocolo`. |
+| `trabajos_saneamiento` | Un trabajo de saneamiento por CAP (puede durar varios días). | Solo para corregir. |
+| `avances_saneamiento` | Un avance por cada día de trabajo. | Solo para corregir. |
+| `hallazgos` | Avisos de plagas reportados por el personal (la app todavía no los usa). | Sí. |
+| `seguimientos_vencidos` | Intervenciones cuya última visita pidió otra visita y pasó el plazo. Se rehace sola todos los días. | No. |
+| `operarios` | Quiénes aparecen en «¿Quién sos?», su correo (`mail`) y si reciben el recordatorio de las 19 h (`recordatorio`: SI/NO). | Sí. |
+| `establecimientos` | Lugares que aparecen en la app, con su código de la BASE COMÚN del sistema HyS y el correo que recibe su parte del resumen (`mail_aviso`). | Sí. |
+| `sectores` | Sectores de hospitales y de dependencias/CAPS. | Sí. |
+| `plagas`, `productos`, `dosis_frecuencia` | Catálogo técnico. Solo HyS. | Sí. |
+| `configuracion` | Correos que reciben el resumen diario (HyS, Dirección Asociada Administrativa, Área Externa) y la dirección desde la que salen todos los correos (`mail_remitente`). | Sí. |
+| `LEEME` | Descripción de las hojas. | Sí. |
 
-1. Creá un repositorio nuevo (o usá uno existente), por ejemplo `mipyv-app`.
-2. Subí estos archivos a la raíz del repositorio:
-   `index.html`, `app.js`, `data.js`, `icons.js`, `manifest.json`, `sw.js`,
-   `icon-192.png`, `icon-512.png`.
-3. Configuración del repositorio → Pages → Source: rama `main`, carpeta `/`.
-4. GitHub te da una URL tipo `https://tu-usuario.github.io/mipyv-app/`.
-5. Esa es la URL que Javier y Paulo abren desde el celular. Pueden
-   "Agregar a pantalla de inicio" para que quede como ícono de app.
+**Para agregar o sacar algo de la app** (un operario, un CAP, un producto, una dosis): se edita la hoja. Para que algo deje de aparecer, se pone **NO** en la columna `activo` (o **Inactivo** en `estado`, en productos). La app toma los cambios la próxima vez que se abre con señal. No hace falta tocar el código.
 
-## Paso 6 — Activar la alerta diaria de seguimiento MIPyV (opcional pero recomendado)
+**Protocolo.** Si se carga a mano un número de protocolo (por ejemplo `139/2026`) en la columna `protocolo` de una visita, todas las visitas con ese número se toman como una misma intervención. Las visitas que la app marca como continuación (columna `protocolo_existente`) también se agrupan solas.
 
-1. En el editor de Apps Script: **Activadores (ícono de reloj) → Añadir activador**.
-2. Función: `alertaSeguimientoDiaria`.
-3. Tipo de origen del evento: **Activado por tiempo**.
-4. Tipo de activador basado en tiempo: **Temporizador diario**, elegí el
-   horario (ej. 8:00–9:00).
-5. Guardar. A partir de ahí, si hay 2das intervenciones vencidas, te llega
-   un mail automático. (Esta alerta es solo del módulo MIPyV por ahora.)
+**Establecimientos que faltan en la BASE COMÚN:** Adolescencia, Casa Tutelada, CIT, Hilando Caminos, Pichi Anai, UGD - Ex APT y Vacunatorio Central. Están marcados en la columna `en_base_comun`. Cuando se carguen en el sistema HyS, completar `codigo_sistema`, `sitio_sistema`, `nombre_oficial` y `codigo_sisa`.
 
-## Notas importantes
+**Menú «MIPyV» de la planilla** (aparece al abrirla):
+- *Preparar planilla*: crea hojas y columnas que falten. No borra nada. Usarlo después de cada actualización del servidor.
+- *Actualizar seguimientos vencidos*: rehace esa hoja en el momento.
+- *Enviar el resumen de hoy ahora*: manda el resumen del día a todos sus destinatarios (son correos reales).
+- *Instalar avisos automáticos*: crea los tres activadores. Usarlo solo si se borraron; no los duplica. Si se ejecuta desde el editor, no muestra cartel: el aviso sale en la planilla.
+- *Comprobar desde qué correo se envía*: muestra si los correos van a salir desde `mail_remitente`. No envía nada.
+- *Ayuda*: explicación breve de todo lo anterior.
 
-- **Sin conexión:** la app funciona igual en los dos módulos — guarda todo
-  en el celular (localStorage) y lo manda solo cuando detecta señal. El
-  botón "Sincronizar" en la barra superior también fuerza el envío manual.
-- **Trabajos de varios días (Saneamiento):** si Javier inicia un trabajo en
-  un CAP y Paulo lo tiene que continuar otro día desde su propio celular,
-  la app intenta traer la lista de "trabajos abiertos" desde la planilla
-  automáticamente al entrar a esa pantalla — pero **solo si hay conexión en
-  ese momento**. Si Paulo está sin señal y el trabajo se inició desde el
-  teléfono de Javier, no lo va a ver hasta que tenga señal. Es una
-  limitación a tener en cuenta al coordinar quién sigue cada tarea.
-- **Fotos:** por ahora la app las adjunta como imagen local (base64) al
-  registro que se envía; en la planilla queda anotado que existe una foto.
-  Si más adelante querés que las fotos se guarden directamente en una
-  carpeta de Drive, es un agregado sencillo al `Codigo_AppsScript.gs`
-  (puedo sumarlo cuando quieras).
-- **Catálogos MIPyV:** productos, plagas, dosis/frecuencia, establecimientos
-  y sectores están hoy hardcodeados en `data.js` como copia de respaldo
-  offline. El backend (`doGet`) ya expone esos mismos catálogos en vivo
-  desde la planilla — el siguiente paso natural es que la app los lea de
-  ahí al abrir (con `data.js` como fallback si no hay señal).
-- **Íconos de plagas/productos/tareas:** son ilustraciones simples por
-  silueta y color (no fotos reales), para evitar depender de imágenes con
-  derechos de autor. Si preferís fotos reales, sacá las fotos vos y las
-  reemplazamos en `icons.js` o como archivos de imagen aparte — decime y
-  lo ajusto.
+---
 
+## 3. Cómo actualizar la app (GitHub)
+
+1. Subir el o los archivos que cambiaron: **Add file → Upload files → Commit changes**.
+2. Subir también **`version.js`** con el número nuevo (año.mes.día y una letra si hay más de un cambio el mismo día, por ejemplo `2026.10.07b`).
+3. Listo. **`sw.js` no se toca más.** Los celulares descargan la versión nueva solos y se recargan cuando vuelven a la pantalla de inicio. Puede tardar hasta 15 minutos.
+
+Para saber qué versión tiene cada celular: está escrita abajo en la pantalla de inicio y en la ayuda «?».
+
+## 4. Cómo actualizar el servidor (Apps Script)
+
+1. En la planilla: **Extensiones → Apps Script**.
+2. Abrir `Código.gs`, borrar todo y pegar el contenido de **`Codigo_AppsScript.gs`** (el archivo que termina en **.gs**). La primera línea tiene que decir `MIPyV Red HZT — Servidor (Apps Script)`.
+3. Guardar.
+4. **Implementar → Gestionar implementaciones →** lápiz ✏️ **→ Versión: Nueva versión → Implementar.** No usar «Nueva implementación»: cambia la dirección y la app deja de enviar.
+5. Si se agregaron columnas, en la planilla: **MIPyV → Preparar planilla**.
+6. Comprobar: abrir la dirección del servidor en el navegador. Tiene que aparecer un texto que empieza con `{"operarios":`.
+
+El archivo `Correccion_Catalogos.gs` que está en el mismo proyecto **no se vuelve a ejecutar**: borra y reescribe las hojas `productos`, `plagas` y `dosis_frecuencia`.
+
+**Activadores** (ícono del reloj en el editor): tiene que haber tres, uno de cada uno.
+
+| Función | Cuándo |
+|---|---|
+| `actualizarSeguimientosVencidos` | todos los días, 7 h |
+| `enviarRecordatoriosOperarios` | lunes a viernes, 19 h |
+| `enviarResumenDiario` | todos los días, 20 h |
+
+---
+
+## 5. Cómo funcionan los envíos
+
+- Cada registro se guarda primero en el celular y después se envía. Se borra del celular **solo** cuando la planilla confirma que lo guardó.
+- Si no hay señal o la planilla no responde, queda como «N sin enviar» y se reintenta solo: al volver la señal, al abrir la app y cada 5 minutos. También se puede tocar **Sincronizar**.
+- Si un envío llega dos veces, la planilla lo reconoce y no lo duplica.
+- Las listas «Continuar una abierta» y «Continuar un trabajo abierto» vienen de la planilla. El celular guarda la última que descargó para usarla sin señal y le suma lo que todavía no envió.
+- **Importante para los operarios:** no borrar la app ni los datos del navegador mientras haya registros «sin enviar».
+
+---
+
+## 5 bis. Correos automáticos (una sola vez por día)
+
+**Resumen diario (20 h):**
+
+| Dónde fue la intervención | Reciben |
+|---|---|
+| En un CAPS | Dirección Asociada Administrativa (Cdor. Domínguez) + HyS + Área Externa (F. Funes) + el correo de ese CAPS |
+| En el HZT u otro lugar que no es CAPS | Dirección Asociada Administrativa + HyS |
+
+La Dirección Asociada Administrativa y HyS reciben el resumen completo todos los días, aunque no haya registros; el asunto avisa qué operario no registró nada. Área Externa y cada CAPS reciben solo los días en que hubo trabajos ahí. Los correos se cambian en la planilla: hoja `configuracion` y columna `mail_aviso` de `establecimientos` («s/d» = no recibe).
+
+**Recordatorio a operarios (lunes a viernes, 19 h):** al operario con `recordatorio` = SI que no tenga ningún trabajo registrado ese día (ni como quien cargó ni como acompañante) le llega un mail recordando la nota del 7/10/2026 sobre el registro obligatorio, con el enlace a la app. Hoy está activo solo para Javier Tramaleo. Llega también los feriados y los días sin trabajo: si hace falta, poner NO ese día.
+
+**Remitente:** todos los correos salen desde **belenpellegrini.hys@gmail.com** (clave `mail_remitente` de la hoja `configuracion`). Esa dirección tiene que estar en Gmail › Configuración › Cuentas › «Enviar correo como» de la cuenta dueña de la planilla. Si no está, salen desde la cuenta dueña con respuesta a la de HyS. Después de pegar una versión nueva del servidor que pida permisos, ejecutar una vez `comprobarRemitente` desde el editor para autorizarlos.
+
+Ningún correo se repite: aunque un activador corra dos veces, cada envío sale una sola vez por día.
+
+---
+
+## 6. Plan B: si falla GitHub
+
+- La app sigue funcionando en los celulares donde ya estaba abierta, porque queda guardada en el teléfono.
+- Si no se puede abrir, las visitas y avances se cargan a mano en la hoja correspondiente de la planilla, respetando los encabezados. Para que no se dupliquen, usar un identificador propio, por ejemplo `V-MANUAL-20261007-1`.
+- Las listas (operarios, lugares, productos, dosis) se siguen editando en la planilla como siempre.
+
+---
+
+## 7. Problemas frecuentes
+
+| Qué pasa | Causa | Qué hacer |
+|---|---|---|
+| El servidor muestra `ReferenceError: document is not defined` | En `Código.gs` se pegó `app.js` en lugar del servidor. | Repetir el paso 4 con el archivo `.gs`. |
+| Quedan registros «sin enviar» aunque hay señal | La planilla rechazó el registro. | Tocar «?» en el inicio: muestra el motivo. |
+| Un cambio en la planilla no aparece en la app | La app todavía no se abrió con señal. | Volver al inicio y esperar unos segundos, o cerrar y abrir la app. |
+| La dosis dice «Consultar a HyS» | Esa combinación de plaga y producto no está en `dosis_frecuencia`. | Agregar la fila si corresponde. |
+| Una versión nueva no aparece en el celular | Todavía no se descargó. | Esperar 15 minutos en la pantalla de inicio, o cerrar y abrir la app. |
+
+---
+
+## 8. Pendiente para más adelante
+
+- Vincular una visita con un hallazgo de la hoja `hallazgos` (hoy la app no tiene ese paso, por eso la marca «Atendido» no se activa).
+- Avances de saneamiento de agosto y septiembre que apuntan a trabajos que nunca llegaron a la planilla (se perdieron con el envío anterior): revisar si hace falta reconstruirlos a mano.
+
+---
+
+¹ Ley N.° 19.587 de Higiene y Seguridad en el Trabajo y Decreto Reglamentario N.° 351/79.
+² Decreto N.° 351/79, condiciones de higiene en los ambientes laborales.
+³ Resolución SRT N.° 905/2015, funciones de los Servicios de Higiene y Seguridad en el Trabajo.
+
+*Servicio de Higiene y Seguridad · HySL — Hospitales más seguros para las personas*
