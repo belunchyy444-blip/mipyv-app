@@ -306,19 +306,19 @@ const CHIPS_CON_DETALLE = {
 // ============================================================
 const TIPOS_TAREA_HYS = [
   "Control de extintores", "Señalización", "Recorrida de seguridad",
-  "Apoyo a mantenimiento", "Traslado de residuos", "Otra",
+  "Traslado de residuos", "Otra",
 ];
 // Dibujo de cada tarea, según una palabra de su nombre (si no coincide, 📋)
 const EMOJI_TAREA_HYS = [
   ["extintor", "🧯"], ["señal", "⚠️"], ["recorrida", "🚶"],
-  ["mantenimiento", "🔧"], ["residuo", "🗑️"], ["otra", "✏️"],
+  ["residuo", "🗑️"], ["otra", "✏️"],
 ];
 
 // ============================================================
 // AYUDA — texto simple por pantalla, para el botón "?"
 // ============================================================
 const AYUDA_TEXTOS = {
-  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, ayudar a mantenimiento, llevar residuos). Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal.",
+  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, llevar residuos). Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal.",
   quien: "Tocá tu nombre en la lista.",
   acompanante: "Si hoy trabajaste solo/a, tocá esa opción. Si estuviste con el otro operario, tocá la otra — así queda registrado que fueron los dos.",
   horario: "Tocá para elegir la hora en que empezaste y la hora en que terminaste. Si trabajaste con el otro operario, también sus horarios.",

@@ -1,8 +1,8 @@
 # MIPyV Red HZT — Guía de despliegue y administración
 
-Versión de la guía: 9 de octubre de 2026 · App 2026.10.09 · Servidor 2026-10-09 · Alcance: Área Trelew (HZT, HMH, dependencias y CAPS)
+Versión de la guía: 9 de octubre de 2026 · App 2026.10.09b · Servidor 2026-10-09 · Alcance: Área Trelew (HZT, HMH, dependencias y CAPS)
 
-App de registro de control de plagas y vectores (MIPyV), de limpieza y saneamiento (PROP-HYS-045) y de otras tareas de Higiene y Seguridad (control de extintores, señalización, recorridas, apoyo a mantenimiento, traslado de residuos), para uso de los operarios del Servicio de Higiene y Seguridad desde el celular, con o sin señal.
+App de registro de control de plagas y vectores (MIPyV), de limpieza y saneamiento (PROP-HYS-045) y de otras tareas de Higiene y Seguridad (control de extintores, señalización, recorridas, traslado de residuos), para uso de los operarios del Servicio de Higiene y Seguridad desde el celular, con o sin señal.
 
 **Marco normativo.** El registro de las intervenciones de control de plagas y de saneamiento forma parte de las funciones de prevención del Servicio de Higiene y Seguridad en el Trabajo¹ y de las condiciones de higiene de los establecimientos² ³.
 
