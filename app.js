@@ -1,7 +1,7 @@
 // ============================================================
 // ESTADO GENERAL
 // ============================================================
-let currentModule = null; // "mipyv" | "saneamiento"
+let currentModule = null; // "mipyv" | "saneamiento" | "hys"
 let currentOperario = null; // { id, nombre }
 
 let stepList = [];
@@ -71,7 +71,7 @@ function goHome() {
   currentModule = null;
   if (hayVersionNueva) { window.location.reload(); return; }
   cargarCatalogosGuardados(); // por si se descargaron listas nuevas mientras cargaba
-  document.body.classList.remove("mode-saneamiento");
+  document.body.classList.remove("mode-saneamiento", "mode-hys");
   brandLabel.textContent = "Red HZT";
   progressWrap.style.display = "none";
   bottomBar.style.display = "none";
@@ -86,14 +86,20 @@ function enterModule(mod) {
   resetVisita();
   resetIntervencion();
   resetSaneamiento();
+  resetTareaHys();
   operarioAcompanante = null;
   acompananteRespondido = false;
-  if (mod === "saneamiento") {
+  document.body.classList.remove("mode-saneamiento", "mode-hys");
+  if (mod === "hys") {
+    document.body.classList.add("mode-hys");
+    brandLabel.textContent = "Higiene y Seguridad";
+    stepList = ["quien", "acompanante", "h-tipo"];
+    reiniciarPantallasHys();
+  } else if (mod === "saneamiento") {
     document.body.classList.add("mode-saneamiento");
     brandLabel.textContent = "Saneamiento · Área Externa";
     stepList = ["quien", "acompanante", "s-tipo"];
   } else {
-    document.body.classList.remove("mode-saneamiento");
     brandLabel.textContent = "MIPyV · HZT Red";
     stepList = ["quien", "acompanante", "m-tipo"];
   }
@@ -105,6 +111,7 @@ function enterModule(mod) {
 
 document.getElementById("goMipyv").addEventListener("click", () => enterModule("mipyv"));
 document.getElementById("goSaneamiento").addEventListener("click", () => enterModule("saneamiento"));
+document.getElementById("goHys").addEventListener("click", () => enterModule("hys"));
 
 function showStep(name) {
   document.querySelectorAll(".screen").forEach(s => {
@@ -113,10 +120,10 @@ function showStep(name) {
   const pos = stepList.indexOf(name) + 1;
   progressFill.style.width = Math.max(8, (pos / stepList.length) * 100) + "%";
   backBtn.style.visibility = pos <= 1 ? "hidden" : "visible";
-  const isSentScreen = name === "m-sent" || name === "s-sent";
+  const isSentScreen = name === "m-sent" || name === "s-sent" || name === "h-sent";
   bottomBar.style.display = isSentScreen ? "none" : "flex";
   nextBtn.disabled = !canAdvance(name);
-  const isConfirm = name === "m-confirm" || name === "s-confirm";
+  const isConfirm = name === "m-confirm" || name === "s-confirm" || name === "h-confirm";
   nextBtn.textContent = isConfirm ? "Enviar" : "Siguiente";
   screensEl.scrollTop = 0;
 
@@ -132,6 +139,11 @@ function showStep(name) {
   if (name === "m-epp") renderEppGrid();
   if (name === "s-epp") renderSEppGrid();
   if (name === "s-seguridad") renderSSeguridad();
+  if (name === "h-lugares") renderLugaresHys();
+  if (name === "h-extintores") renderExtintores();
+  if (name === "h-detalle") prepararDetalleHys();
+  if (name === "h-hallazgos") prepararHallazgosHys();
+  if (name === "h-confirm") renderResumenHys();
 }
 
 function canAdvance(name) {
@@ -155,6 +167,10 @@ function canAdvance(name) {
     case "s-epp": return avance.epp_utilizado.length > 0;
     case "s-detalle": return validarDetalleSaneamiento();
     case "s-cierre": return !!avance.cierre;
+    case "h-tipo": return !!tareaHys.tipo_tarea;
+    case "h-lugares": return tareaHys.lugares.length > 0;
+    case "h-extintores": return tareaHys.lugares.every(l => extintorCompleto(tareaHys.extintores[l.id]));
+    case "h-detalle": return validarDetalleHys();
     default: return true;
   }
 }
@@ -170,14 +186,14 @@ function validarHorario() {
   if (horaInicioEl.value && horaFinEl.value && horaFinEl.value <= horaInicioEl.value) {
     errores.push("Tu hora de finalización tiene que ser después de la de inicio.");
   }
-  if (operarioAcompanante && horaInicioAcompEl.value && horaFinAcompEl.value && horaFinAcompEl.value <= horaInicioAcompEl.value) {
+  if (pideHorarioAcompanante() && horaInicioAcompEl.value && horaFinAcompEl.value && horaFinAcompEl.value <= horaInicioAcompEl.value) {
     errores.push(`La hora de finalización de ${operarioAcompanante} tiene que ser después de la de inicio.`);
   }
   avisoHorario.textContent = errores.join(" ");
   avisoHorario.style.display = errores.length ? "block" : "none";
   if (errores.length) return false;
   if (!horaInicioEl.value || !horaFinEl.value) return false;
-  if (operarioAcompanante && (!horaInicioAcompEl.value || !horaFinAcompEl.value)) return false;
+  if (pideHorarioAcompanante() && (!horaInicioAcompEl.value || !horaFinAcompEl.value)) return false;
   return true;
 }
 
@@ -192,6 +208,7 @@ function goNext() {
   if (!canAdvance(current)) return;
   if (current === "m-confirm") { sendVisita(); return; }
   if (current === "s-confirm") { sendAvance(); return; }
+  if (current === "h-confirm") { sendTareaHys(); return; }
   if (stepIndex < stepList.length - 1) stepIndex++;
   showStep(stepList[stepIndex]);
 }
@@ -256,8 +273,14 @@ const horaFinAcompLabel = document.getElementById("horaFinAcompLabel");
 const horaInicioAcompEl = document.getElementById("horaInicioAcomp");
 const horaFinAcompEl = document.getElementById("horaFinAcomp");
 
+// En "Otra tarea de HyS" no se piden los horarios del acompañante
+// (la hoja tareas_hys guarda un solo horario por tarea).
+function pideHorarioAcompanante() {
+  return !!operarioAcompanante && currentModule !== "hys";
+}
+
 function actualizarPantallaHorario() {
-  const hayAcompanante = !!operarioAcompanante;
+  const hayAcompanante = pideHorarioAcompanante();
   horarioAcompananteWrap.style.display = hayAcompanante ? "block" : "none";
   if (hayAcompanante) {
     horaInicioAcompLabel.textContent = `Hora de inicio de ${operarioAcompanante}`;
@@ -1278,6 +1301,362 @@ document.getElementById("sNewBtn").addEventListener("click", () => {
   enterModule("saneamiento");
 });
 
+
+// ============================================================
+// OTRAS TAREAS DE HIGIENE Y SEGURIDAD (hoja tareas_hys)
+// Pasos: tipo de tarea → lugares (uno o varios) → [extintores, solo en
+// "Control de extintores"] → qué hiciste + fotos → hallazgos y
+// observaciones → horario → confirmar. No pide plaga ni producto.
+// ============================================================
+let tareaHys = {};
+let hFotosDataUrls = []; // hasta 5
+
+function resetTareaHys() {
+  tareaHys = { tipo_tarea: null, lugares: [], extintores: {}, detalle: "", hallazgos: "", observaciones: "" };
+  hFotosDataUrls = [];
+}
+resetTareaHys();
+
+const esTareaExtintores = (tipo) => /extintor|matafuego/i.test(tipo || "");
+const esTareaOtra = (tipo) => /^otra\b/i.test(String(tipo || "").trim());
+function emojiTarea(nombre) {
+  const n = String(nombre || "").toLowerCase();
+  const par = EMOJI_TAREA_HYS.find(([clave]) => n.includes(clave));
+  return par ? par[1] : "📋";
+}
+
+// --- h-tipo
+const tipoTareaGrid = document.getElementById("tipoTareaGrid");
+function renderTiposTarea() {
+  tipoTareaGrid.innerHTML = "";
+  TIPOS_TAREA_HYS.forEach(nombre => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tile" + (tareaHys.tipo_tarea === nombre ? " selected" : "");
+    btn.innerHTML = `<div class="emoji">${emojiTarea(nombre)}</div><div class="label">${nombre}</div>`;
+    btn.onclick = () => {
+      tareaHys.tipo_tarea = nombre;
+      armarPasosHys();
+      [...tipoTareaGrid.children].forEach(c => c.classList.remove("selected"));
+      btn.classList.add("selected");
+      nextBtn.disabled = false;
+      setTimeout(goNext, 180);
+    };
+    tipoTareaGrid.appendChild(btn);
+  });
+}
+renderTiposTarea();
+
+function armarPasosHys() {
+  stepList = ["quien", "acompanante", "h-tipo", "h-lugares"];
+  if (esTareaExtintores(tareaHys.tipo_tarea)) stepList.push("h-extintores");
+  stepList.push("h-detalle", "h-hallazgos", "horario", "h-confirm", "h-sent");
+  stepIndex = stepList.indexOf("h-tipo");
+}
+
+// --- h-lugares (varios a la vez)
+const hTipoChips = document.getElementById("hTipoChips");
+const hLugarGrid = document.getElementById("hLugarGrid");
+const hLugaresCuenta = document.getElementById("hLugaresCuenta");
+let hTipoFiltro = "Todos";
+TIPOS.forEach(t => {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "chip" + (t === "Todos" ? " active" : "");
+  chip.textContent = t === "CAP" ? "CAPS" : t;
+  chip.onclick = () => {
+    hTipoFiltro = t;
+    [...hTipoChips.children].forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    renderLugaresHys();
+  };
+  hTipoChips.appendChild(chip);
+});
+
+// Al empezar una tarea nueva: filtro de lugares en "Todos" y nada marcado.
+function reiniciarPantallasHys() {
+  hTipoFiltro = "Todos";
+  [...hTipoChips.children].forEach((c, i) => c.classList.toggle("active", i === 0));
+  renderTiposTarea();
+}
+
+function renderLugaresHys() {
+  hLugarGrid.innerHTML = "";
+  const iconFor = { Hospital: "hospital", Dependencia: "building", CAP: "cap" };
+  ESTABLECIMIENTOS.filter(e => hTipoFiltro === "Todos" || e.tipo === hTipoFiltro).forEach(est => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const marcado = tareaHys.lugares.some(l => l.id === est.id);
+    btn.className = "tile multi" + (marcado ? " selected" : "");
+    btn.innerHTML = `<div class="epp-check"></div>${renderIcon(iconFor[est.tipo])}<div class="label">${est.nombre}</div>`;
+    btn.onclick = () => {
+      if (tareaHys.lugares.some(l => l.id === est.id)) {
+        tareaHys.lugares = tareaHys.lugares.filter(l => l.id !== est.id);
+        btn.classList.remove("selected");
+      } else {
+        tareaHys.lugares.push({ id: est.id, nombre: est.nombre, tipo: est.tipo });
+        btn.classList.add("selected");
+      }
+      // mismo orden que la lista de establecimientos
+      const orden = ESTABLECIMIENTOS.map(e => e.id);
+      tareaHys.lugares.sort((a, b) => orden.indexOf(a.id) - orden.indexOf(b.id));
+      actualizarCuentaLugares();
+      nextBtn.disabled = !canAdvance("h-lugares");
+    };
+    hLugarGrid.appendChild(btn);
+  });
+  actualizarCuentaLugares();
+}
+function actualizarCuentaLugares() {
+  const n = tareaHys.lugares.length;
+  hLugaresCuenta.textContent = n === 0 ? "" : n === 1 ? "Elegiste 1 lugar: " + tareaHys.lugares[0].nombre
+    : `Elegiste ${n} lugares: ` + tareaHys.lugares.map(l => l.nombre).join(", ");
+}
+
+// --- h-extintores (una tarjeta por lugar)
+const extintoresList = document.getElementById("extintoresList");
+const PREGUNTAS_EXTINTOR = [
+  ["chapa", "¿Tiene chapa baliza?"],
+  ["colgado", "¿Está colgado en su lugar?"],
+  ["accesible", "¿Se puede agarrar fácil? (nada adelante)"],
+];
+function extintorVacio() { return { chapa: null, colgado: null, accesible: null, vencimiento: "", sinFecha: false }; }
+function extintorCompleto(x) {
+  return !!x && x.chapa !== null && x.colgado !== null && x.accesible !== null && (x.sinFecha || !!x.vencimiento);
+}
+function mesTexto(v) { // "2027-03" → "03/2027"
+  const m = String(v || "").match(/^(\d{4})-(\d{2})$/);
+  return m ? m[2] + "/" + m[1] : "";
+}
+
+function renderExtintores() {
+  // conservar lo ya contestado y sumar los lugares nuevos
+  const nuevos = {};
+  tareaHys.lugares.forEach(l => { nuevos[l.id] = tareaHys.extintores[l.id] || extintorVacio(); });
+  tareaHys.extintores = nuevos;
+  extintoresList.innerHTML = "";
+  tareaHys.lugares.forEach(l => {
+    const x = tareaHys.extintores[l.id];
+    const card = document.createElement("div");
+    card.className = "ext-card" + (extintorCompleto(x) ? " completo" : "");
+    let html = `<h4>🧯 ${l.nombre}</h4>`;
+    PREGUNTAS_EXTINTOR.forEach(([campo, pregunta]) => {
+      html += `<div class="ext-preg">${pregunta}</div>
+        <div class="sino" data-campo="${campo}">
+          <button type="button" class="si${x[campo] === true ? " on" : ""}" data-valor="si">Sí</button>
+          <button type="button" class="no${x[campo] === false ? " on" : ""}" data-valor="no">No</button>
+        </div>`;
+    });
+    html += `<div class="ext-preg">Vencimiento de la carga (mes y año)</div>
+      <input type="month" value="${x.vencimiento || ""}" ${x.sinFecha ? "disabled" : ""}>
+      <button type="button" class="chip ext-sinfecha${x.sinFecha ? " active" : ""}">No se puede leer</button>`;
+    card.innerHTML = html;
+    card.querySelectorAll(".sino").forEach(grupo => {
+      grupo.querySelectorAll("button").forEach(b => {
+        b.onclick = () => {
+          x[grupo.dataset.campo] = b.dataset.valor === "si";
+          grupo.querySelectorAll("button").forEach(o => o.classList.remove("on"));
+          b.classList.add("on");
+          refrescarTarjeta();
+        };
+      });
+    });
+    const inputMes = card.querySelector('input[type=month]');
+    inputMes.addEventListener("input", () => { x.vencimiento = inputMes.value; refrescarTarjeta(); });
+    const btnSinFecha = card.querySelector(".ext-sinfecha");
+    btnSinFecha.onclick = () => {
+      x.sinFecha = !x.sinFecha;
+      btnSinFecha.classList.toggle("active", x.sinFecha);
+      inputMes.disabled = x.sinFecha;
+      if (x.sinFecha) { x.vencimiento = ""; inputMes.value = ""; }
+      refrescarTarjeta();
+    };
+    function refrescarTarjeta() {
+      card.classList.toggle("completo", extintorCompleto(x));
+      nextBtn.disabled = !canAdvance("h-extintores");
+    }
+    extintoresList.appendChild(card);
+  });
+}
+
+// Texto del control de extintores: una línea por lugar (va a "detalle")
+// y lo que está mal (va a "hallazgos").
+function textoExtintores() {
+  const sn = (v) => v === true ? "Sí" : v === false ? "No" : "s/d";
+  const hoy = new Date();
+  const mesActual = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0");
+  const lineas = [], problemas = [];
+  tareaHys.lugares.forEach(l => {
+    const x = tareaHys.extintores[l.id] || extintorVacio();
+    const venc = x.sinFecha ? "no se puede leer" : (mesTexto(x.vencimiento) || "s/d");
+    lineas.push(`${l.nombre}: chapa baliza ${sn(x.chapa)} · colgado ${sn(x.colgado)} · accesible ${sn(x.accesible)} · vencimiento de la carga ${venc}`);
+    const mal = [];
+    if (x.chapa === false) mal.push("sin chapa baliza");
+    if (x.colgado === false) mal.push("no está colgado");
+    if (x.accesible === false) mal.push("no está accesible");
+    if (x.sinFecha) mal.push("no se puede leer el vencimiento de la carga");
+    else if (x.vencimiento && x.vencimiento < mesActual) mal.push("carga vencida (" + mesTexto(x.vencimiento) + ")");
+    else if (x.vencimiento && x.vencimiento === mesActual) mal.push("la carga vence este mes (" + mesTexto(x.vencimiento) + ")");
+    if (mal.length) problemas.push(`${l.nombre}: ${mal.join("; ")}`);
+  });
+  return { lineas, problemas };
+}
+
+// --- h-detalle (qué hiciste + fotos)
+const hDetalle = document.getElementById("hDetalle");
+const hDetalleSub = document.getElementById("hDetalleSub");
+const hDetalleAviso = document.getElementById("hDetalleAviso");
+// En control de extintores lo escrito es opcional (ya está todo contestado).
+// En las demás tareas hay que escribir qué se hizo.
+function detalleObligatorioHys() { return !esTareaExtintores(tareaHys.tipo_tarea); }
+function validarDetalleHys() {
+  const ok = !detalleObligatorioHys() || tareaHys.detalle.trim().length > 0;
+  hDetalleAviso.style.display = ok || !hDetalle.dataset.tocado ? "none" : "block";
+  return ok;
+}
+function prepararDetalleHys() {
+  hDetalle.value = tareaHys.detalle;
+  delete hDetalle.dataset.tocado;
+  hDetalleAviso.style.display = "none";
+  if (esTareaExtintores(tareaHys.tipo_tarea)) {
+    hDetalleSub.textContent = "Opcional — si querés contar algo más, escribilo acá";
+    hDetalle.placeholder = "Ej.: se cambió de lugar un extintor, se avisó a mantenimiento...";
+  } else if (esTareaOtra(tareaHys.tipo_tarea)) {
+    hDetalleSub.textContent = "Obligatorio — escribí qué tarea hiciste";
+    hDetalle.placeholder = "Ej.: se armó el sector para la capacitación...";
+  } else {
+    hDetalleSub.textContent = "Obligatorio — contalo con tus palabras";
+    hDetalle.placeholder = "Escribí acá qué hiciste...";
+  }
+  renderHFotoGrid();
+  nextBtn.disabled = !canAdvance("h-detalle");
+}
+hDetalle.addEventListener("input", () => {
+  tareaHys.detalle = hDetalle.value;
+  hDetalle.dataset.tocado = "1";
+  nextBtn.disabled = !canAdvance("h-detalle");
+});
+
+const hFotoGrid = document.getElementById("hFotoGrid");
+const hPhotoInput = document.getElementById("hPhotoInput");
+function renderHFotoGrid() {
+  hFotoGrid.innerHTML = "";
+  hFotosDataUrls.forEach((url, i) => {
+    const box = document.createElement("div");
+    box.className = "foto-slot filled";
+    box.innerHTML = `<img src="${url}" alt="foto ${i + 1}"><button type="button" class="foto-remove" data-i="${i}">×</button>`;
+    hFotoGrid.appendChild(box);
+  });
+  if (hFotosDataUrls.length < 5) {
+    const addBox = document.createElement("button");
+    addBox.type = "button";
+    addBox.className = "foto-slot add";
+    addBox.innerHTML = `<span>+</span><small>${hFotosDataUrls.length}/5</small>`;
+    addBox.onclick = () => hPhotoInput.click();
+    hFotoGrid.appendChild(addBox);
+  }
+  hFotoGrid.querySelectorAll(".foto-remove").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      hFotosDataUrls.splice(Number(btn.dataset.i), 1);
+      renderHFotoGrid();
+    };
+  });
+}
+hPhotoInput.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  hPhotoInput.value = "";
+  if (!file) return;
+  try {
+    hFotosDataUrls.push(await comprimirFoto(file));
+    renderHFotoGrid();
+  } catch (err) {
+    alert("No se pudo cargar la foto. Probá sacarla de nuevo.");
+  }
+});
+
+// --- h-hallazgos (problemas + observaciones, los dos opcionales)
+const hHallazgos = document.getElementById("hHallazgos");
+const hObservaciones = document.getElementById("hObservaciones");
+const hAutoHallazgos = document.getElementById("hAutoHallazgos");
+function prepararHallazgosHys() {
+  hHallazgos.value = tareaHys.hallazgos;
+  hObservaciones.value = tareaHys.observaciones;
+  const auto = esTareaExtintores(tareaHys.tipo_tarea) ? textoExtintores().problemas : [];
+  hAutoHallazgos.style.display = auto.length ? "block" : "none";
+  hAutoHallazgos.textContent = auto.length ? "Ya quedó anotado:\n" + auto.join("\n") : "";
+}
+hHallazgos.addEventListener("input", () => { tareaHys.hallazgos = hHallazgos.value; });
+hObservaciones.addEventListener("input", () => { tareaHys.observaciones = hObservaciones.value; });
+
+// Arma el registro tal como va a la hoja tareas_hys.
+function registroTareaHys() {
+  const ext = esTareaExtintores(tareaHys.tipo_tarea) ? textoExtintores() : { lineas: [], problemas: [] };
+  const detalle = ext.lineas.concat(tareaHys.detalle.trim() ? [tareaHys.detalle.trim()] : []).join("\n");
+  const hallazgos = ext.problemas.concat(tareaHys.hallazgos.trim() ? [tareaHys.hallazgos.trim()] : []).join("\n");
+  return {
+    id_tarea: tareaHys.id_tarea || ("H-" + Date.now()),
+    fecha: new Date().toISOString(),
+    id_operario: currentOperario ? currentOperario.id : "",
+    operario: currentOperario ? currentOperario.nombre : "",
+    operario_acompanante: operarioAcompanante || "",
+    hora_inicio: horaInicioEl.value || "",
+    hora_fin: horaFinEl.value || "",
+    id_establecimiento: tareaHys.lugares.map(l => l.id).join(" | "),
+    establecimiento: tareaHys.lugares.map(l => l.nombre).join(" | "),
+    tipo_tarea: tareaHys.tipo_tarea,
+    detalle,
+    hallazgos,
+    observaciones: tareaHys.observaciones.trim(),
+    fotos_base64: hFotosDataUrls,
+  };
+}
+
+// --- h-confirm
+function renderResumenHys() {
+  const r = registroTareaHys();
+  const rows = [
+    ["Operario", r.operario],
+    ["Tarea", r.tipo_tarea],
+    ["Lugares", tareaHys.lugares.map(l => l.nombre).join(", ")],
+    ["Qué hiciste", r.detalle || "—"],
+    ["Problemas", r.hallazgos || "Ninguno"],
+    ["Fotos", hFotosDataUrls.length ? hFotosDataUrls.length + " foto(s)" : "Sin fotos"],
+    ["Horario", (r.hora_inicio || "—") + " a " + (r.hora_fin || "—")],
+  ];
+  if (operarioAcompanante) rows.splice(1, 0, ["Trabajó junto con", operarioAcompanante]);
+  const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+  document.getElementById("hSummaryList").innerHTML = rows.map(([k, v]) => `
+    <div class="summary-card">
+      ${renderIcon("generic", 34)}
+      <div class="txt"><b>${k}</b><span>${esc(v || "—")}</span></div>
+    </div>`).join("");
+}
+
+// --- envío
+async function sendTareaHys() {
+  const record = registroTareaHys();
+  nextBtn.disabled = true;
+  const guardado = await guardarEnCola([{ tipo: "tarea_hys", data: record }]);
+  nextBtn.disabled = false;
+  if (!guardado) return;
+  document.getElementById("hSentSub").textContent = navigator.onLine
+    ? "Tarea registrada — sincronizando…"
+    : "Tarea guardada en el celular — se enviará cuando haya señal";
+  stepIndex = stepList.length - 1;
+  showStep("h-sent");
+  trySync();
+}
+
+document.getElementById("hNewBtn").addEventListener("click", () => {
+  resetTareaHys();
+  hDetalle.value = ""; hHallazgos.value = ""; hObservaciones.value = "";
+  horaInicioEl.value = ""; horaFinEl.value = "";
+  horaInicioAcompEl.value = ""; horaFinAcompEl.value = "";
+  renderTiposTarea();
+  enterModule("hys");
+});
+
 // ============================================================
 // SINCRONIZACIÓN
 // ============================================================
@@ -1475,6 +1854,9 @@ function convertirCatalogos(d) {
       out.familias[texto(r.id_producto)] = fam.length ? fam : ["general"];
     });
   }
+  if (Array.isArray(d.tipos_tarea)) {
+    out.tipos_tarea = d.tipos_tarea.map(texto).filter(Boolean);
+  }
   if (Array.isArray(d.dosis_frecuencia)) {
     out.dosis = {};
     d.dosis_frecuencia.forEach(r => {
@@ -1500,6 +1882,7 @@ function aplicarCatalogos(c) {
   reemplazarObjeto(FAMILIA_PRODUCTO, c.familias);
   reemplazarObjeto(DOSIS_FRECUENCIA, c.dosis);
   reemplazarLista(CAPS_SANEAMIENTO, ESTABLECIMIENTOS.filter(e => e.tipo === "CAP"));
+  reemplazarLista(TIPOS_TAREA_HYS, c.tipos_tarea);
   // volver a dibujar las grillas con las listas nuevas
   renderOperarios();
   renderEstablecimientos();
@@ -1507,6 +1890,7 @@ function aplicarCatalogos(c) {
   renderProductos();
   renderSProductos();
   renderCapsNuevo();
+  renderTiposTarea();
 }
 
 function cargarCatalogosGuardados() {

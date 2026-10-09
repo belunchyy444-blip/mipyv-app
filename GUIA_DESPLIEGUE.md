@@ -1,8 +1,8 @@
 # MIPyV Red HZT — Guía de despliegue y administración
 
-Versión de la guía: 7 de octubre de 2026 (rev. noche) · App 2026.10.07b · Servidor 2026-10-07f · Alcance: Área Trelew (HZT, HMH, dependencias y CAPS)
+Versión de la guía: 9 de octubre de 2026 · App 2026.10.09 · Servidor 2026-10-09 · Alcance: Área Trelew (HZT, HMH, dependencias y CAPS)
 
-App de registro de control de plagas y vectores (MIPyV) y de limpieza y saneamiento (PROP-HYS-045), para uso de los operarios del Servicio de Higiene y Seguridad desde el celular, con o sin señal.
+App de registro de control de plagas y vectores (MIPyV), de limpieza y saneamiento (PROP-HYS-045) y de otras tareas de Higiene y Seguridad (control de extintores, señalización, recorridas, apoyo a mantenimiento, traslado de residuos), para uso de los operarios del Servicio de Higiene y Seguridad desde el celular, con o sin señal.
 
 **Marco normativo.** El registro de las intervenciones de control de plagas y de saneamiento forma parte de las funciones de prevención del Servicio de Higiene y Seguridad en el Trabajo¹ y de las condiciones de higiene de los establecimientos² ³.
 
@@ -30,16 +30,17 @@ Archivos del repositorio `mipyv-app`: `index.html`, `version.js`, `app.js`, `dat
 | `visitas` | Una fila por cada visita MIPyV. | Solo la columna `revisado_hys` y, si corresponde, `protocolo`. |
 | `trabajos_saneamiento` | Un trabajo de saneamiento por CAP (puede durar varios días). | Solo para corregir. |
 | `avances_saneamiento` | Un avance por cada día de trabajo. | Solo para corregir. |
+| `tareas_hys` | Una fila por cada «Otra tarea de Higiene y Seguridad». Si la tarea abarcó varios lugares, `id_establecimiento` y `establecimiento` los llevan separados por « \| ». En control de extintores, `detalle` tiene una línea por lugar (chapa baliza, colgado, accesible y vencimiento de la carga) y lo que está mal pasa solo a `hallazgos`. | Solo la columna `revisado_hys`. |
 | `hallazgos` | Avisos de plagas reportados por el personal (la app todavía no los usa). | Sí. |
 | `seguimientos_vencidos` | Intervenciones cuya última visita pidió otra visita y pasó el plazo. Se rehace sola todos los días. | No. |
 | `operarios` | Quiénes aparecen en «¿Quién sos?», su correo (`mail`) y si reciben el recordatorio de las 19 h (`recordatorio`: SI/NO). | Sí. |
 | `establecimientos` | Lugares que aparecen en la app, con su código de la BASE COMÚN del sistema HyS y el correo que recibe su parte del resumen (`mail_aviso`). | Sí. |
 | `sectores` | Sectores de hospitales y de dependencias/CAPS. | Sí. |
 | `plagas`, `productos`, `dosis_frecuencia` | Catálogo técnico. Solo HyS. | Sí. |
-| `configuracion` | Correos que reciben el resumen diario (HyS, Dirección Asociada Administrativa, Área Externa) y la dirección desde la que salen todos los correos (`mail_remitente`). | Sí. |
+| `configuracion` | Correos que reciben el resumen diario (HyS, Dirección Asociada Administrativa, Área Externa) la dirección desde la que salen todos los correos (`mail_remitente`) y la lista de tipos de tarea de HyS (una fila por tipo, con `tipo_tarea` en la columna clave). | Sí. |
 | `LEEME` | Descripción de las hojas. | Sí. |
 
-**Para agregar o sacar algo de la app** (un operario, un CAP, un producto, una dosis): se edita la hoja. Para que algo deje de aparecer, se pone **NO** en la columna `activo` (o **Inactivo** en `estado`, en productos). La app toma los cambios la próxima vez que se abre con señal. No hace falta tocar el código.
+**Para agregar o sacar algo de la app** (un operario, un CAP, un producto, una dosis, un tipo de tarea de HyS): se edita la hoja. Para que algo deje de aparecer, se pone **NO** en la columna `activo` (o **Inactivo** en `estado`, en productos). La app toma los cambios la próxima vez que se abre con señal. No hace falta tocar el código.
 
 **Protocolo.** Si se carga a mano un número de protocolo (por ejemplo `139/2026`) en la columna `protocolo` de una visita, todas las visitas con ese número se toman como una misma intervención. Las visitas que la app marca como continuación (columna `protocolo_existente`) también se agrupan solas.
 
@@ -100,12 +101,12 @@ El archivo `Correccion_Catalogos.gs` que está en el mismo proyecto **no se vuel
 
 | Dónde fue la intervención | Reciben |
 |---|---|
-| En un CAPS | Dirección Asociada Administrativa (Cdor. Domínguez) + HyS + Área Externa (F. Funes) + el correo de ese CAPS |
+| En un CAPS | Dirección Asociada Administrativa (Cdor. Domínguez) + HyS + Área Externa (F. Funes) + el correo de ese CAPS (si una tarea abarcó varios CAPS, le llega a cada uno) |
 | En el HZT u otro lugar que no es CAPS | Dirección Asociada Administrativa + HyS |
 
-La Dirección Asociada Administrativa y HyS reciben el resumen completo todos los días, aunque no haya registros; el asunto avisa qué operario no registró nada. Área Externa y cada CAPS reciben solo los días en que hubo trabajos ahí. Los correos se cambian en la planilla: hoja `configuracion` y columna `mail_aviso` de `establecimientos` («s/d» = no recibe).
+El resumen incluye las tres cosas: visitas de plagas, avances de saneamiento y otras tareas de HyS. La Dirección Asociada Administrativa y HyS reciben el resumen completo todos los días, aunque no haya registros; el asunto avisa qué operario no registró nada. Área Externa y cada CAPS reciben solo los días en que hubo trabajos ahí. Los correos se cambian en la planilla: hoja `configuracion` y columna `mail_aviso` de `establecimientos` («s/d» = no recibe).
 
-**Recordatorio a operarios (lunes a viernes, 19 h):** al operario con `recordatorio` = SI que no tenga ningún trabajo registrado ese día (ni como quien cargó ni como acompañante) le llega un mail recordando la nota del 7/10/2026 sobre el registro obligatorio, con el enlace a la app. Hoy está activo solo para Javier Tramaleo. Llega también los feriados y los días sin trabajo: si hace falta, poner NO ese día.
+**Recordatorio a operarios (lunes a viernes, 19 h):** al operario con `recordatorio` = SI que no tenga ningún trabajo registrado ese día (plagas, saneamiento u otra tarea de HyS; ni como quien cargó ni como acompañante) le llega un mail recordando la nota del 7/10/2026 sobre el registro obligatorio, con el enlace a la app. Hoy está activo solo para Javier Tramaleo. Llega también los feriados y los días sin trabajo: si hace falta, poner NO ese día.
 
 **Remitente:** todos los correos salen desde **belenpellegrini.hys@gmail.com** (clave `mail_remitente` de la hoja `configuracion`). Esa dirección tiene que estar en Gmail › Configuración › Cuentas › «Enviar correo como» de la cuenta dueña de la planilla. Si no está, salen desde la cuenta dueña con respuesta a la de HyS. Después de pegar una versión nueva del servidor que pida permisos, ejecutar una vez `comprobarRemitente` desde el editor para autorizarlos.
 

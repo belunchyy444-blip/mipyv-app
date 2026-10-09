@@ -300,10 +300,25 @@ const CHIPS_CON_DETALLE = {
 };
 
 // ============================================================
+// OTRAS TAREAS DE HIGIENE Y SEGURIDAD
+// La lista real se edita en la planilla (hoja configuracion, filas
+// "tipo_tarea"). Esta es la de respaldo si nunca se pudo descargar.
+// ============================================================
+const TIPOS_TAREA_HYS = [
+  "Control de extintores", "Señalización", "Recorrida de seguridad",
+  "Apoyo a mantenimiento", "Traslado de residuos", "Otra",
+];
+// Dibujo de cada tarea, según una palabra de su nombre (si no coincide, 📋)
+const EMOJI_TAREA_HYS = [
+  ["extintor", "🧯"], ["señal", "⚠️"], ["recorrida", "🚶"],
+  ["mantenimiento", "🔧"], ["residuo", "🗑️"], ["otra", "✏️"],
+];
+
+// ============================================================
 // AYUDA — texto simple por pantalla, para el botón "?"
 // ============================================================
 const AYUDA_TEXTOS = {
-  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas), o Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques). Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal.",
+  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, ayudar a mantenimiento, llevar residuos). Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal.",
   quien: "Tocá tu nombre en la lista.",
   acompanante: "Si hoy trabajaste solo/a, tocá esa opción. Si estuviste con el otro operario, tocá la otra — así queda registrado que fueron los dos.",
   horario: "Tocá para elegir la hora en que empezaste y la hora en que terminaste. Si trabajaste con el otro operario, también sus horarios.",
@@ -332,5 +347,12 @@ const AYUDA_TEXTOS = {
   "s-detalle": "Tocá los cartelitos que correspondan. Si tocás uno con ❓, escribí abajo qué pasó (es obligatorio). Podés sacar hasta 5 fotos con el recuadro +.",
   "s-cierre": "¿Vas a seguir otro día en este CAP? Tocá \"Continúa otro día\". ¿Ya terminaste? Tocá \"Terminado\".",
   "s-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
+  "h-tipo": "Tocá la tarea que hiciste. Si no está en la lista, tocá «Otra» y después escribí qué hiciste.",
+  "h-lugares": "Tocá todos los lugares donde hiciste esta tarea. Podés tocar varios: se marcan con un tilde ✓. Para sacar uno, tocalo de nuevo. Arriba podés filtrar por Hospital, Dependencia o CAPS.",
+  "h-extintores": "En cada lugar, mirá el extintor y tocá Sí o No en cada pregunta. Chapa baliza: el cartel rojo y blanco de la pared que marca dónde está. Colgado: que esté en su soporte, no en el piso. Fácil de agarrar: que no haya nada adelante. Vencimiento: la fecha de la tarjeta o etiqueta de la carga. Si no se puede leer, tocá «No se puede leer».",
+  "h-detalle": "Escribí con tus palabras qué hiciste. Podés sacar hasta 5 fotos con el recuadro +.",
+  "h-hallazgos": "Si viste algo mal, escribilo. Si está todo bien, dejalo vacío y tocá \"Siguiente\". Lo que salió mal en los extintores ya está anotado solo.",
+  "h-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
+  "h-sent": "Listo, la tarea quedó guardada. Si arriba dice \"sin enviar\", no pasa nada: se manda sola cuando haya señal. No borres la app ni los datos del navegador mientras haya registros sin enviar.",
   "s-sent": "Listo, el avance quedó guardado. Si arriba dice \"sin enviar\", no pasa nada: se manda solo cuando haya señal. No borres la app ni los datos del navegador mientras haya registros sin enviar.",
 };
